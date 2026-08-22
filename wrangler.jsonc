@@ -1,18 +1,43 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "browser-run-preview-astro",
+  "main": "src/worker.js",
   "compatibility_date": "2026-06-24",
   "workers_dev": true,
   "assets": {
-    "directory": "./dist"
+    "directory": "./dist",
+    "binding": "ASSETS"
   },
   "observability": {
-    "enabled": true
+    "enabled": true,
+    "logs": {
+      "enabled": true,
+      "invocation_logs": true,
+      "persist": true
+    },
+    "traces": {
+      "enabled": true,
+      "head_sampling_rate": 1,
+      "persist": true
+    }
   },
   "vars": {
     "APP_ENV": "production"
   },
   "previews": {
+    "observability": {
+      "enabled": true,
+      "logs": {
+        "enabled": true,
+        "invocation_logs": true,
+        "persist": true
+      },
+      "traces": {
+        "enabled": true,
+        "head_sampling_rate": 1,
+        "persist": true
+      }
+    },
     "vars": {
       "APP_ENV": "preview"
     }
