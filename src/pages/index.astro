@@ -28,18 +28,18 @@ const checks = ["Preview URL", "Browser Run", "WOBS Signal", "PR comment"];
 			<section class="hero" aria-label="Preview control room">
 				<div class="signal-card">
 					<p class="eyebrow">Agent Review Loop</p>
-					<h1>Preview is visible, but the runtime tells the truth.</h1>
+					<h1>Preview is visible, and the runtime agrees.</h1>
 					<p class="lede">
 						Browser Run can prove the Preview renders. WOBS shows what happened inside the Worker
 						while the browser clicked through the Preview.
 					</p>
 					<div class="actions">
 						<a href="https://developers.cloudflare.com/workers/previews/">Workers Previews</a>
-						<span>Known issue: hidden session refresh fails</span>
+						<span>Runtime probe: clean</span>
 					</div>
 					<div class="runtime-alert" role="status">
-						<strong>Visible regression</strong>
-						<span>Session refresh is failing in this Preview. The screenshot catches the symptom; WOBS shows the Worker request and request ID.</span>
+						<strong>Verified fix</strong>
+						<span>Session refresh is healthy in this Preview. Browser Run captures the UI and WOBS confirms the Worker request succeeds.</span>
 					</div>
 				</div>
 
@@ -190,18 +190,18 @@ const checks = ["Preview URL", "Browser Run", "WOBS Signal", "PR comment"];
 		display: grid;
 		gap: 0.35rem;
 		margin-top: 1.25rem;
-		border: 1px solid rgba(255, 46, 166, 0.52);
+		border: 1px solid rgba(122, 252, 255, 0.52);
 		border-radius: 22px;
 		padding: 1rem;
-		background: rgba(255, 46, 166, 0.14);
-		box-shadow: 0 0 46px rgba(255, 46, 166, 0.18);
+		background: rgba(122, 252, 255, 0.12);
+		box-shadow: 0 0 46px rgba(122, 252, 255, 0.18);
 	}
 
 	.runtime-alert strong {
 		font-size: 0.82rem;
 		letter-spacing: 0.16em;
 		text-transform: uppercase;
-		color: #ff9bd0;
+		color: #7afcff;
 	}
 
 	.runtime-alert span {
