@@ -12,12 +12,13 @@ export default {
 
     if (url.pathname === "/api/session/refresh") {
       const payload = {
-        ...baseEvent("session_refresh_succeeded", request, env, requestId, debugId),
+        ...baseEvent("session_refresh_failed", request, env, requestId, debugId),
+        reason: "known-demo-regression",
         userVisible: false,
-        clue: "Browser Run screenshot and WOBS runtime probe now agree: the background session refresh is healthy.",
+        clue: "Browser Run screenshot can still be green while WOBS records this Preview-only runtime error.",
       };
-      console.log(payload);
-      return json({ ok: true, requestId, debugId, refreshed: true });
+      console.error(payload);
+      return json({ ok: false, requestId, debugId, error: "session refresh failed" }, 500);
     }
 
     if (url.pathname === "/api/checkout") {
