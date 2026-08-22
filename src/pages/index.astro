@@ -1,5 +1,5 @@
 ---
-const checks = ["Preview URL", "Browser Run", "PR comment", "Screenshot"];
+const checks = ["Preview URL", "Browser Run", "WOBS Signal", "PR comment"];
 ---
 
 <html lang="en">
@@ -10,20 +10,36 @@ const checks = ["Preview URL", "Browser Run", "PR comment", "Screenshot"];
 		<meta name="viewport" content="width=device-width" />
 		<meta name="generator" content={Astro.generator} />
 		<title>Preview Control Room</title>
+		<script is:inline>
+			const params = new URLSearchParams(window.location.search);
+			const debugId = params.get("debugId") || `browser-run-${Date.now()}`;
+
+			fetch(`/api/checkout?debugId=${encodeURIComponent(debugId)}`, {
+				headers: { "x-debug-id": debugId },
+			}).catch(() => {});
+
+			fetch(`/api/session/refresh?debugId=${encodeURIComponent(debugId)}`, {
+				headers: { "x-debug-id": debugId },
+			}).catch(() => {});
+		</script>
 	</head>
 	<body>
 		<main>
 			<section class="hero" aria-label="Preview control room">
 				<div class="signal-card">
 					<p class="eyebrow">Agent Review Loop</p>
-					<h1>Preview is armed, visible, and screenshot-ready.</h1>
+					<h1>Preview is visible, but the runtime tells the truth.</h1>
 					<p class="lede">
-						This branch trades the quiet starter page for a neon operations deck. If Browser Run
-						captures this, the isolated Worker Preview is serving the PR code.
+						Browser Run can prove the Preview renders. WOBS shows what happened inside the Worker
+						while the browser clicked through the Preview.
 					</p>
 					<div class="actions">
 						<a href="https://developers.cloudflare.com/workers/previews/">Workers Previews</a>
-						<span>Branch deploy: live</span>
+						<span>Known issue: hidden session refresh fails</span>
+					</div>
+					<div class="runtime-alert" role="status">
+						<strong>Visible regression</strong>
+						<span>Session refresh is failing in this Preview. The screenshot catches the symptom; WOBS shows the Worker request and request ID.</span>
 					</div>
 				</div>
 
@@ -168,6 +184,30 @@ const checks = ["Preview URL", "Browser Run", "PR comment", "Screenshot"];
 		border: 1px solid rgba(255, 255, 255, 0.24);
 		color: #ffdf3d;
 		background: rgba(255, 255, 255, 0.08);
+	}
+
+	.runtime-alert {
+		display: grid;
+		gap: 0.35rem;
+		margin-top: 1.25rem;
+		border: 1px solid rgba(255, 46, 166, 0.52);
+		border-radius: 22px;
+		padding: 1rem;
+		background: rgba(255, 46, 166, 0.14);
+		box-shadow: 0 0 46px rgba(255, 46, 166, 0.18);
+	}
+
+	.runtime-alert strong {
+		font-size: 0.82rem;
+		letter-spacing: 0.16em;
+		text-transform: uppercase;
+		color: #ff9bd0;
+	}
+
+	.runtime-alert span {
+		max-width: 640px;
+		color: rgba(248, 251, 255, 0.82);
+		line-height: 1.5;
 	}
 
 	.orbit {

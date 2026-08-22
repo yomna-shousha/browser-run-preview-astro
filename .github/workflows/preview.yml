@@ -64,11 +64,12 @@ jobs:
           CF_ACCESS_CLIENT_ID: ${{ secrets.CF_ACCESS_CLIENT_ID }}
           CF_ACCESS_CLIENT_SECRET: ${{ secrets.CF_ACCESS_CLIENT_SECRET }}
           PREVIEW_URL: ${{ steps.deploy.outputs.preview_url }}
+          DEBUG_ID: pr-${{ github.event.pull_request.number }}-${{ github.run_id }}-${{ github.run_attempt }}
         run: |
           set -euo pipefail
           mkdir -p preview-output
           REQUEST=$(jq -nc \
-            --arg url "$PREVIEW_URL" \
+            --arg url "${PREVIEW_URL}?debugId=${DEBUG_ID}" \
             --arg accessClientId "$CF_ACCESS_CLIENT_ID" \
             --arg accessClientSecret "$CF_ACCESS_CLIENT_SECRET" \
             '{
@@ -96,6 +97,43 @@ jobs:
           fi
 
           test -s preview-output/screenshot.png
+
+          echo "debug_id=$DEBUG_ID" >> "$GITHUB_OUTPUT"
+
+      - name: Probe Preview runtime for WOBS correlation
+        id: wobs-probe
+        env:
+          CF_ACCESS_CLIENT_ID: ${{ secrets.CF_ACCESS_CLIENT_ID }}
+          CF_ACCESS_CLIENT_SECRET: ${{ secrets.CF_ACCESS_CLIENT_SECRET }}
+          PREVIEW_URL: ${{ steps.deploy.outputs.preview_url }}
+          DEBUG_ID: ${{ steps.screenshot.outputs.debug_id }}
+        run: |
+          set -euo pipefail
+          mkdir -p preview-output
+
+          HEALTH_STATUS=$(curl -sS \
+            -H "CF-Access-Client-Id: ${CF_ACCESS_CLIENT_ID}" \
+            -H "CF-Access-Client-Secret: ${CF_ACCESS_CLIENT_SECRET}" \
+            -H "x-debug-id: ${DEBUG_ID}" \
+            "${PREVIEW_URL}/api/health?debugId=${DEBUG_ID}" \
+            --output preview-output/health.json \
+            --write-out "%{http_code}")
+
+          SESSION_STATUS=$(curl -sS \
+            -H "CF-Access-Client-Id: ${CF_ACCESS_CLIENT_ID}" \
+            -H "CF-Access-Client-Secret: ${CF_ACCESS_CLIENT_SECRET}" \
+            -H "x-debug-id: ${DEBUG_ID}" \
+            "${PREVIEW_URL}/api/session/refresh?debugId=${DEBUG_ID}" \
+            --output preview-output/session-refresh.json \
+            --write-out "%{http_code}" || true)
+
+          HEALTH_REQUEST_ID=$(jq -r '.requestId // "unknown"' preview-output/health.json)
+          SESSION_REQUEST_ID=$(jq -r '.requestId // "unknown"' preview-output/session-refresh.json)
+
+          echo "health_status=$HEALTH_STATUS" >> "$GITHUB_OUTPUT"
+          echo "session_status=$SESSION_STATUS" >> "$GITHUB_OUTPUT"
+          echo "health_request_id=$HEALTH_REQUEST_ID" >> "$GITHUB_OUTPUT"
+          echo "session_request_id=$SESSION_REQUEST_ID" >> "$GITHUB_OUTPUT"
 
       - name: Publish screenshot for PR comment
         id: publish-screenshot
@@ -134,6 +172,11 @@ jobs:
           PREVIEW_URL: ${{ steps.deploy.outputs.preview_url }}
           DEPLOYMENT_ID: ${{ steps.deploy.outputs.deployment_id }}
           SCREENSHOT_URL: ${{ steps.publish-screenshot.outputs.screenshot_url }}
+          DEBUG_ID: ${{ steps.screenshot.outputs.debug_id }}
+          HEALTH_STATUS: ${{ steps.wobs-probe.outputs.health_status }}
+          SESSION_STATUS: ${{ steps.wobs-probe.outputs.session_status }}
+          HEALTH_REQUEST_ID: ${{ steps.wobs-probe.outputs.health_request_id }}
+          SESSION_REQUEST_ID: ${{ steps.wobs-probe.outputs.session_request_id }}
         with:
           script: |
             const marker = '<!-- worker-preview:browser-run-preview-astro -->';
@@ -142,6 +185,35 @@ jobs:
             const deploymentId = process.env.DEPLOYMENT_ID || 'unknown';
             const branch = context.payload.pull_request.head.ref;
             const sha = context.payload.pull_request.head.sha.slice(0, 7);
+            const previewName = `pr-${context.issue.number}`;
+            const wobsPath = `/workers/services/view/${process.env.WORKER_NAME}/production/previews/${previewName}/observability/events`;
+            const sessionStatus = Number(process.env.SESSION_STATUS || 0);
+            const runtimeStatus = sessionStatus >= 500 ? 'Known runtime issue detected' : 'Runtime probe clean';
+            const runtimeDetails = sessionStatus >= 500
+              ? `### Detected issue
+
+            The Preview rendered, but the Worker runtime probe failed during the same validation flow.
+
+            | Issue | Evidence |
+            | --- | --- |
+            | Failed endpoint | \`GET /api/session/refresh\` |
+            | Observed status | \`${process.env.SESSION_STATUS}\` |
+            | Expected WOBS event | \`session_refresh_failed\` |
+            | Debug correlation | search WOBS for \`${process.env.DEBUG_ID}\` |
+            | Request correlation | open/search request \`${process.env.SESSION_REQUEST_ID}\` |
+
+            This is the demo gap: Browser Run proves what rendered, while WOBS exposes the hidden Worker failure behind that Preview.`
+              : `### Fix verification
+
+            The previously failing runtime probe is now healthy.
+
+            | Check | Evidence |
+            | --- | --- |
+            | Fixed endpoint | \`GET /api/session/refresh\` |
+            | Observed status | \`${process.env.SESSION_STATUS}\` |
+            | Expected WOBS event | \`session_refresh_succeeded\` |
+            | Debug correlation | search WOBS for \`${process.env.DEBUG_ID}\` |
+            | Request correlation | open/search request \`${process.env.SESSION_REQUEST_ID}\` |`;
 
             const body = `${marker}
             ## Worker Preview
@@ -157,8 +229,18 @@ jobs:
             | Commit | \`${sha}\` |
             | Deployment | \`${deploymentId}\` |
             | Worker | \`${process.env.WORKER_NAME}\` |
+            | Debug ID | \`${process.env.DEBUG_ID}\` |
+            | Health probe | \`${process.env.HEALTH_STATUS}\` / \`${process.env.HEALTH_REQUEST_ID}\` |
+            | Session refresh probe | \`${process.env.SESSION_STATUS}\` / \`${process.env.SESSION_REQUEST_ID}\` |
+            | WOBS path | \`${wobsPath}\` |
 
-            Generated by \`wrangler preview\` and Cloudflare Browser Run.`;
+            ### Runtime signal
+
+            ${runtimeStatus}. Browser Run captured the page, then the workflow generated Preview traffic with the same debug ID so WOBS can correlate the screenshot to Worker logs/traces.
+
+            ${runtimeDetails}
+
+            Generated by \`wrangler preview\`, Cloudflare Browser Run, and Preview-scoped WOBS probes.`;
 
             const { data: comments } = await github.rest.issues.listComments({
               owner: context.repo.owner,
