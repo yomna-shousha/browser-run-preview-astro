@@ -61,12 +61,22 @@ jobs:
         env:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CF_ACCESS_CLIENT_ID: ${{ secrets.CF_ACCESS_CLIENT_ID }}
+          CF_ACCESS_CLIENT_SECRET: ${{ secrets.CF_ACCESS_CLIENT_SECRET }}
           PREVIEW_URL: ${{ steps.deploy.outputs.preview_url }}
         run: |
           set -euo pipefail
           mkdir -p preview-output
-          REQUEST=$(jq -nc --arg url "$PREVIEW_URL" '{
+          REQUEST=$(jq -nc \
+            --arg url "$PREVIEW_URL" \
+            --arg accessClientId "$CF_ACCESS_CLIENT_ID" \
+            --arg accessClientSecret "$CF_ACCESS_CLIENT_SECRET" \
+            '{
             url: $url,
+            setExtraHTTPHeaders: {
+              "CF-Access-Client-Id": $accessClientId,
+              "CF-Access-Client-Secret": $accessClientSecret
+            },
             viewport: { width: 1440, height: 1000 },
             screenshotOptions: { fullPage: true }
           }')

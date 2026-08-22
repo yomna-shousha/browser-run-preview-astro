@@ -15,6 +15,8 @@ Set these repository secrets before opening PRs:
 
 - `CLOUDFLARE_API_TOKEN`: token with Workers Scripts Edit and Browser Rendering Edit permissions.
 - `CLOUDFLARE_ACCOUNT_ID`: Cloudflare account ID used by Browser Run's screenshot API.
+- `CF_ACCESS_CLIENT_ID`: Cloudflare Access service-token client ID for protected Preview URLs.
+- `CF_ACCESS_CLIENT_SECRET`: Cloudflare Access service-token client secret for protected Preview URLs.
 
 ## Preview Flow
 
