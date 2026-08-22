@@ -77,8 +77,7 @@ jobs:
               "CF-Access-Client-Id": $accessClientId,
               "CF-Access-Client-Secret": $accessClientSecret
             },
-            viewport: { width: 1440, height: 1000 },
-            screenshotOptions: { fullPage: true }
+            viewport: { width: 1440, height: 1000 }
           }')
 
           STATUS=$(curl -sS \
