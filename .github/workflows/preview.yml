@@ -77,10 +77,8 @@ jobs:
               "CF-Access-Client-Id": $accessClientId,
               "CF-Access-Client-Secret": $accessClientSecret
             },
-            viewport: { width: 1920, height: 1400 },
-            addStyleTag: [{
-              content: "html { zoom: 0.58; }"
-            }]
+            viewport: { width: 1440, height: 1000 },
+            selector: "main"
           }')
 
           STATUS=$(curl -sS \
