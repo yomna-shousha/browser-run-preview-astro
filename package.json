@@ -1,0 +1,23 @@
+{
+  "name": "browser-run-preview-astro",
+  "type": "module",
+  "version": "0.0.1",
+  "engines": {
+    "node": ">=22.12.0"
+  },
+  "scripts": {
+    "dev": "astro dev",
+    "build": "astro build",
+    "preview": "astro preview",
+    "deploy": "npm run build && wrangler deploy",
+    "cf:preview": "npm run build && wrangler preview --json",
+    "cf:preview:delete": "wrangler preview delete --skip-confirmation",
+    "astro": "astro"
+  },
+  "dependencies": {
+    "astro": "^7.2.4"
+  },
+  "devDependencies": {
+    "wrangler": "^4.125.0"
+  }
+}

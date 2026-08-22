@@ -1,0 +1,20 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "browser-run-preview-astro",
+  "compatibility_date": "2026-06-24",
+  "workers_dev": true,
+  "assets": {
+    "directory": "./dist"
+  },
+  "observability": {
+    "enabled": true
+  },
+  "vars": {
+    "APP_ENV": "production"
+  },
+  "previews": {
+    "vars": {
+      "APP_ENV": "preview"
+    }
+  }
+}

@@ -1,0 +1,237 @@
+name: Worker Preview
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, closed]
+  push:
+    branches: [main]
+
+concurrency:
+  group: worker-preview-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: write
+  issues: write
+  pull-requests: write
+
+env:
+  WORKER_NAME: browser-run-preview-astro
+
+jobs:
+  preview:
+    if: github.event_name == 'pull_request' && github.event.action != 'closed'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "npm"
+
+      - run: npm ci
+
+      - run: npm run build
+
+      - name: Deploy Worker Preview
+        id: deploy
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          PREVIEW_NAME: pr-${{ github.event.pull_request.number }}
+        run: |
+          set -euo pipefail
+          OUTPUT=$(npx wrangler preview --json --name "$PREVIEW_NAME" --tag "${{ github.sha }}" --message "PR #${{ github.event.pull_request.number }} preview")
+          printf '%s\n' "$OUTPUT"
+
+          PREVIEW_URL=$(printf '%s' "$OUTPUT" | jq -r '.preview.urls[0] // empty')
+          DEPLOYMENT_ID=$(printf '%s' "$OUTPUT" | jq -r '.deployment.id // empty')
+
+          if [ -z "$PREVIEW_URL" ]; then
+            echo "::error::Could not find a preview URL in wrangler output"
+            exit 1
+          fi
+
+          echo "preview_url=$PREVIEW_URL" >> "$GITHUB_OUTPUT"
+          echo "deployment_id=$DEPLOYMENT_ID" >> "$GITHUB_OUTPUT"
+
+      - name: Capture screenshot with Browser Run
+        id: screenshot
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          PREVIEW_URL: ${{ steps.deploy.outputs.preview_url }}
+        run: |
+          set -euo pipefail
+          mkdir -p preview-output
+          REQUEST=$(jq -nc --arg url "$PREVIEW_URL" '{
+            url: $url,
+            cacheTTL: 0,
+            viewport: { width: 1440, height: 1000 },
+            gotoOptions: { waitUntil: "networkidle0", timeout: 45000 },
+            screenshotOptions: { fullPage: true }
+          }')
+
+          curl -sS --fail-with-body \
+            -X POST "https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/browser-rendering/screenshot" \
+            -H "Authorization: Bearer ${CLOUDFLARE_API_TOKEN}" \
+            -H "Content-Type: application/json" \
+            -d "$REQUEST" \
+            --output preview-output/screenshot.png
+
+          test -s preview-output/screenshot.png
+
+      - name: Publish screenshot for PR comment
+        id: publish-screenshot
+        env:
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          ARTIFACT_BRANCH: preview-artifacts-pr-${{ github.event.pull_request.number }}
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          WORKTREE=$(mktemp -d)
+          if git ls-remote --exit-code --heads origin "$ARTIFACT_BRANCH" >/dev/null 2>&1; then
+            git fetch origin "$ARTIFACT_BRANCH"
+            git worktree add "$WORKTREE" "origin/$ARTIFACT_BRANCH"
+          else
+            git worktree add --detach "$WORKTREE"
+            git -C "$WORKTREE" switch --orphan "$ARTIFACT_BRANCH"
+            git -C "$WORKTREE" rm -rf . >/dev/null 2>&1 || true
+          fi
+
+          mkdir -p "$WORKTREE/screenshots"
+          cp preview-output/screenshot.png "$WORKTREE/screenshots/preview.png"
+          git -C "$WORKTREE" add screenshots/preview.png
+          git -C "$WORKTREE" commit -m "Update screenshot for PR ${PR_NUMBER}" || true
+          git -C "$WORKTREE" push origin "HEAD:$ARTIFACT_BRANCH"
+
+          SCREENSHOT_URL="https://raw.githubusercontent.com/${GITHUB_REPOSITORY}/${ARTIFACT_BRANCH}/screenshots/preview.png?cache-bust=${GITHUB_SHA}"
+          echo "screenshot_url=$SCREENSHOT_URL" >> "$GITHUB_OUTPUT"
+
+      - name: Comment on PR
+        uses: actions/github-script@v7
+        env:
+          PREVIEW_URL: ${{ steps.deploy.outputs.preview_url }}
+          DEPLOYMENT_ID: ${{ steps.deploy.outputs.deployment_id }}
+          SCREENSHOT_URL: ${{ steps.publish-screenshot.outputs.screenshot_url }}
+        with:
+          script: |
+            const marker = '<!-- worker-preview:browser-run-preview-astro -->';
+            const previewUrl = process.env.PREVIEW_URL;
+            const screenshotUrl = process.env.SCREENSHOT_URL;
+            const deploymentId = process.env.DEPLOYMENT_ID || 'unknown';
+            const branch = context.payload.pull_request.head.ref;
+            const sha = context.payload.pull_request.head.sha.slice(0, 7);
+
+            const body = `${marker}
+            ## Worker Preview
+
+            [Open the latest Preview](${previewUrl})
+
+            ![Browser Run screenshot of the Preview](${screenshotUrl})
+
+            | Field | Value |
+            | --- | --- |
+            | Preview | \`pr-${context.issue.number}\` |
+            | Branch | \`${branch}\` |
+            | Commit | \`${sha}\` |
+            | Deployment | \`${deploymentId}\` |
+            | Worker | \`${process.env.WORKER_NAME}\` |
+
+            Generated by \`wrangler preview\` and Cloudflare Browser Run.`;
+
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              per_page: 100,
+            });
+            const existing = comments.find((comment) => comment.body?.includes(marker));
+
+            if (existing) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: existing.id,
+                body,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body,
+              });
+            }
+
+  cleanup:
+    if: github.event_name == 'pull_request' && github.event.action == 'closed'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "npm"
+
+      - run: npm ci
+
+      - name: Delete Worker Preview
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          PREVIEW_NAME: pr-${{ github.event.pull_request.number }}
+        run: npx wrangler preview delete --name "$PREVIEW_NAME" --skip-confirmation || true
+
+      - name: Delete screenshot branch
+        env:
+          ARTIFACT_BRANCH: preview-artifacts-pr-${{ github.event.pull_request.number }}
+        run: git push origin --delete "$ARTIFACT_BRANCH" || true
+
+      - name: Update PR comment
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const marker = '<!-- worker-preview:browser-run-preview-astro -->';
+            const status = context.payload.pull_request.merged ? 'Merged' : 'Closed';
+            const body = `${marker}
+            ## Worker Preview
+
+            ${status}. The Preview and screenshot artifact branch were deleted.`;
+
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              per_page: 100,
+            });
+            const existing = comments.find((comment) => comment.body?.includes(marker));
+            if (existing) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: existing.id,
+                body,
+              });
+            }
+
+  production:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "npm"
+
+      - run: npm ci
+      - run: npm run build
+
+      - name: Deploy production Worker
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: npx wrangler deploy --tag "${{ github.sha }}" --message "${{ github.event.head_commit.message }}"
