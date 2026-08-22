@@ -1,0 +1,29 @@
+package-lock.json
+  s_0d464b420d404e::t_77ef34c0a1db7b 4984
+src/pages/index.astro
+  s_6c716af4d026a3::t_f5dd33a8f6247a 2,12,16-42,50-53,60-76,81-114,119-121,123,127,129-132,136-140,143,146-147,150-154,156-273
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "cbfa279a7e6c2f13c2e21623e343aa464312363e",
+  "prompts": {},
+  "sessions": {
+    "s_0d464b420d404e": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_fd616996effe0BpL6UofmCGqJA",
+        "model": "gpt-5.5"
+      },
+      "human_author": "yomna <yomna@cloudflare.com>"
+    },
+    "s_6c716af4d026a3": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_fd60c911cffe8kLX3RB8C0NLZy",
+        "model": "gpt-5.5"
+      },
+      "human_author": "yomna <yomna@cloudflare.com>"
+    }
+  }
+}
