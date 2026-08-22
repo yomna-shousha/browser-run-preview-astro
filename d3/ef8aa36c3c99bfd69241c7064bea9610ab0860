@@ -1,0 +1,19 @@
+.github/workflows/preview.yml
+  s_6c716af4d026a3::t_7960f51f0d4e91 80-83
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "d3ef8aa36c3c99bfd69241c7064bea9610ab0860",
+  "prompts": {},
+  "sessions": {
+    "s_6c716af4d026a3": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_fd60c911cffe8kLX3RB8C0NLZy",
+        "model": "gpt-5.5"
+      },
+      "human_author": "yomna <yomna@cloudflare.com>"
+    }
+  }
+}
