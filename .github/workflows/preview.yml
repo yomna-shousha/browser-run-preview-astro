@@ -77,9 +77,9 @@ jobs:
               "CF-Access-Client-Id": $accessClientId,
               "CF-Access-Client-Secret": $accessClientSecret
             },
-            viewport: { width: 1800, height: 1300 },
+            viewport: { width: 1920, height: 1400 },
             addStyleTag: [{
-              content: "html { zoom: 0.72; }"
+              content: "html { zoom: 0.58; }"
             }]
           }')
 
@@ -120,12 +120,14 @@ jobs:
           fi
 
           mkdir -p "$WORKTREE/screenshots"
-          cp preview-output/screenshot.png "$WORKTREE/screenshots/preview.png"
-          git -C "$WORKTREE" add screenshots/preview.png
+          SCREENSHOT_FILE="${GITHUB_SHA}.png"
+          cp preview-output/screenshot.png "$WORKTREE/screenshots/${SCREENSHOT_FILE}"
+          cp preview-output/screenshot.png "$WORKTREE/screenshots/latest.png"
+          git -C "$WORKTREE" add "screenshots/${SCREENSHOT_FILE}" screenshots/latest.png
           git -C "$WORKTREE" commit -m "Update screenshot for PR ${PR_NUMBER}" || true
           git -C "$WORKTREE" push origin "HEAD:$ARTIFACT_BRANCH"
 
-          SCREENSHOT_URL="https://raw.githubusercontent.com/${GITHUB_REPOSITORY}/${ARTIFACT_BRANCH}/screenshots/preview.png?cache-bust=${GITHUB_SHA}"
+          SCREENSHOT_URL="https://raw.githubusercontent.com/${GITHUB_REPOSITORY}/${ARTIFACT_BRANCH}/screenshots/${SCREENSHOT_FILE}"
           echo "screenshot_url=$SCREENSHOT_URL" >> "$GITHUB_OUTPUT"
 
       - name: Comment on PR
