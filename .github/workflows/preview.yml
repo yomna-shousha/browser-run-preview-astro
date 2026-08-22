@@ -69,16 +69,22 @@ jobs:
             url: $url,
             cacheTTL: 0,
             viewport: { width: 1440, height: 1000 },
-            gotoOptions: { waitUntil: "networkidle0", timeout: 45000 },
             screenshotOptions: { fullPage: true }
           }')
 
-          curl -sS --fail-with-body \
+          STATUS=$(curl -sS \
             -X POST "https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/browser-rendering/screenshot" \
             -H "Authorization: Bearer ${CLOUDFLARE_API_TOKEN}" \
             -H "Content-Type: application/json" \
             -d "$REQUEST" \
-            --output preview-output/screenshot.png
+            --output preview-output/screenshot.png \
+            --write-out "%{http_code}")
+
+          if [ "$STATUS" -lt 200 ] || [ "$STATUS" -ge 300 ]; then
+            echo "::error::Browser Run screenshot request failed with HTTP ${STATUS}"
+            cat preview-output/screenshot.png
+            exit 1
+          fi
 
           test -s preview-output/screenshot.png
 
