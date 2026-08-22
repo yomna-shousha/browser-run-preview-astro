@@ -30,7 +30,7 @@ jobs:
           node-version: "22"
           cache: "npm"
 
-      - run: npm ci
+      - run: npm install --no-audit --no-fund
 
       - run: npm run build
 
@@ -177,7 +177,7 @@ jobs:
           node-version: "22"
           cache: "npm"
 
-      - run: npm ci
+      - run: npm install --no-audit --no-fund
 
       - name: Delete Worker Preview
         env:
@@ -228,7 +228,7 @@ jobs:
           node-version: "22"
           cache: "npm"
 
-      - run: npm ci
+      - run: npm install --no-audit --no-fund
       - run: npm run build
 
       - name: Deploy production Worker
