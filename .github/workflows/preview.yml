@@ -67,7 +67,6 @@ jobs:
           mkdir -p preview-output
           REQUEST=$(jq -nc --arg url "$PREVIEW_URL" '{
             url: $url,
-            cacheTTL: 0,
             viewport: { width: 1440, height: 1000 },
             screenshotOptions: { fullPage: true }
           }')
