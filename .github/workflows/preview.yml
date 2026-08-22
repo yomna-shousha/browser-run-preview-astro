@@ -44,8 +44,9 @@ jobs:
           OUTPUT=$(npx wrangler preview --json --name "$PREVIEW_NAME" --tag "${{ github.sha }}" --message "PR #${{ github.event.pull_request.number }} preview")
           printf '%s\n' "$OUTPUT"
 
-          PREVIEW_URL=$(printf '%s' "$OUTPUT" | jq -r '.preview.urls[0] // empty')
-          DEPLOYMENT_ID=$(printf '%s' "$OUTPUT" | jq -r '.deployment.id // empty')
+          PREVIEW_JSON=$(printf '%s' "$OUTPUT" | node -e 'const fs = require("node:fs"); const text = fs.readFileSync(0, "utf8"); const start = text.indexOf("{"); if (start < 0) process.exit(1); process.stdout.write(text.slice(start));')
+          PREVIEW_URL=$(printf '%s' "$PREVIEW_JSON" | jq -r '.preview.urls[0] // empty')
+          DEPLOYMENT_ID=$(printf '%s' "$PREVIEW_JSON" | jq -r '.deployment.id // empty')
 
           if [ -z "$PREVIEW_URL" ]; then
             echo "::error::Could not find a preview URL in wrangler output"
