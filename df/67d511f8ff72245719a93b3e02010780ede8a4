@@ -1,0 +1,21 @@
+package-lock.json
+  s_73fd20324bbad7::t_47faa190fc904f 14,517-519,534-536,551-553,568-570,585-587,3382-3384,3391,4978-4980,4991-4995,4999-5001,5009,5012,5026
+package.json
+  s_73fd20324bbad7::t_f2f7d9685db842 21
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "df67d511f8ff72245719a93b3e02010780ede8a4",
+  "prompts": {},
+  "sessions": {
+    "s_73fd20324bbad7": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_faa97f5c4ffeQnMTelrixLnhDM",
+        "model": "gpt-5.5"
+      },
+      "human_author": "yomna <yomna@cloudflare.com>"
+    }
+  }
+}
