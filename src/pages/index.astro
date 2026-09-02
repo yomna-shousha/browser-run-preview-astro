@@ -1,21 +1,26 @@
 ---
-const metrics = [
-	{ label: "Preview requests", value: "14.8k", note: "+18% after deploy" },
-	{ label: "Seeded carts", value: "87", note: "staging data" },
-	{ label: "Runtime probes", value: "200", note: "health and refresh" },
-];
-
-const events = [
-	{ name: "preview_opened", detail: "Browser Run loaded /", status: "ok" },
-	{ name: "astro_catalog_loaded", detail: "Astro page data returned", status: "ok" },
-	{ name: "do_cart_counter_incremented", detail: "PreviewSession wrote seeded data", status: "ok" },
-	{ name: "wobs_correlation_ready", detail: "debugId attached to every request", status: "ok" },
-];
-
 const products = [
-	["ASTRO-HOODIE", "Astro hoodie", "1", "reserved"],
-	["DO-MUG", "Durable Object mug", "2", "reserved"],
-	["EDGE-STICKER", "Workers sticker pack", "4", "reserved"],
+	{
+		sku: "ASTRO-HOODIE",
+		name: "Astro launch hoodie",
+		price: "$64",
+		accent: "#f6821f",
+		description: "Soft fleece, preview-only colorway.",
+	},
+	{
+		sku: "DO-MUG",
+		name: "Durable Object mug",
+		price: "$18",
+		accent: "#fbbf24",
+		description: "Keeps coffee and cart state warm.",
+	},
+	{
+		sku: "EDGE-STICKER",
+		name: "Workers sticker pack",
+		price: "$9",
+		accent: "#22c55e",
+		description: "Tiny logos for laptops and runbooks.",
+	},
 ];
 ---
 
@@ -26,154 +31,110 @@ const products = [
 		<link rel="icon" href="/favicon.ico" />
 		<meta name="viewport" content="width=device-width" />
 		<meta name="generator" content={Astro.generator} />
-		<title>Astro Staging Cart</title>
+		<title>Astro Market</title>
 	</head>
 	<body>
 		<main>
-			<aside class="sidebar" aria-label="Cloudflare navigation">
-				<div class="logo-mark">cf</div>
-				<nav>
-					<a class="active" href="/">Workers</a>
-					<a href="/">Durable Objects</a>
-					<a href="/">Observability</a>
-					<a href="/">Deployments</a>
+			<header class="site-header">
+				<a class="brand" href="/" aria-label="Astro Market home">
+					<span>cf</span>
+					Astro Market
+				</a>
+				<nav aria-label="Main navigation">
+					<a href="#shop">Shop</a>
+					<a href="#cart">Cart</a>
+					<a href="#shipping">Shipping</a>
 				</nav>
-			</aside>
+				<div class="cart-chip">Cart <strong data-counter>42</strong></div>
+			</header>
 
-			<section class="workspace" aria-label="Astro staging dashboard">
-				<header class="topbar">
-					<div>
-						<p class="eyebrow">Cloudflare Workers Preview</p>
-						<h1>Astro staging cart</h1>
+			<section class="hero" aria-label="Store introduction">
+				<div class="hero-copy">
+					<p class="eyebrow">Fresh from the edge</p>
+					<h1>Astro merch for a launch week shop.</h1>
+					<p>
+						A small storefront for preview testing. The cart opens with seeded staging items, then saves updates in a Durable Object behind the page.
+					</p>
+					<div class="hero-actions">
+						<a href="#shop">Shop the drop</a>
+						<span>Cart saved at the edge</span>
 					</div>
-					<div class="status-pill"><span></span> my-worker live</div>
-				</header>
+				</div>
 
-				<section class="hero-card">
-					<div>
-						<p class="label">Pull request environment</p>
-						<h2>Durable Object state seeded for this preview.</h2>
-						<p>
-							Browser Run opens the preview URL, then the page and workflow send Worker requests with the same debug ID. WOBS gets page render, DO reads, DO writes, cache warmup, and session refresh events in one place.
-						</p>
+				<article class="feature-card" id="cart">
+					<div class="product-orbit" aria-hidden="true">
+						<span></span>
+						<span></span>
+						<span></span>
 					</div>
-					<div class="url-card">
-						<span>Preview URL</span>
-						<strong data-preview-url>https://preview.example.workers.dev</strong>
-						<span>Debug ID</span>
-						<strong data-debug-id>browser-run-preview</strong>
+					<div class="cart-summary">
+						<p>In your cart</p>
+						<strong data-counter>42</strong>
+						<span class="cart-label">items reserved for this preview</span>
+						<small>Saved in a Durable Object</small>
 					</div>
-				</section>
+				</article>
+			</section>
 
-				<section class="metrics" aria-label="Preview metrics">
-					{metrics.map((metric) => (
-						<article>
-							<span>{metric.label}</span>
-							<strong>{metric.value}</strong>
-							<small>{metric.note}</small>
-						</article>
-					))}
-				</section>
-
-				<section class="grid">
-					<article class="panel do-panel">
-						<div class="panel-heading">
-							<div>
-								<p class="label">Durable Object</p>
-								<h3>PreviewSession</h3>
-							</div>
-							<span class="tag">seeded staging data</span>
+			<section class="product-grid" id="shop" aria-label="Featured products">
+				{products.map((product) => (
+					<article style={`--accent: ${product.accent}`}>
+						<div class="product-art" aria-hidden="true"><span>{product.name.charAt(0)}</span></div>
+						<div>
+							<small>{product.sku}</small>
+							<h2>{product.name}</h2>
+							<p>{product.description}</p>
 						</div>
-						<div class="counter-row">
-							<div>
-								<span>Cart counter</span>
-								<strong data-counter>42</strong>
-							</div>
-							<div>
-								<span>Object key</span>
-								<strong data-cart-id>cart_pr_4_astro</strong>
-							</div>
-						</div>
-						<table>
-							<thead>
-								<tr><th>SKU</th><th>Item</th><th>Qty</th><th>Status</th></tr>
-							</thead>
-							<tbody>
-								{products.map((product) => (
-									<tr><td>{product[0]}</td><td>{product[1]}</td><td>{product[2]}</td><td>{product[3]}</td></tr>
-								))}
-							</tbody>
-						</table>
+						<footer>
+							<strong>{product.price}</strong>
+							<button type="button">Add</button>
+						</footer>
 					</article>
+				))}
+			</section>
 
-					<article class="panel events-panel">
-						<div class="panel-heading">
-							<div>
-								<p class="label">Observability</p>
-								<h3>WOBS event stream</h3>
-							</div>
-							<span class="tag dark">trace ready</span>
-						</div>
-						<div class="event-list">
-							{events.map((event) => (
-								<div class="event-row">
-									<span class="dot"></span>
-									<div><strong>{event.name}</strong><small>{event.detail}</small></div>
-									<em>{event.status}</em>
-								</div>
-							))}
-						</div>
-					</article>
-				</section>
-
-				<section class="probe-strip" aria-label="Runtime probes">
-					<div><span>Health</span><strong data-probe="probe-health">queued</strong></div>
-					<div><span>Astro feed</span><strong data-probe="probe-astro">queued</strong></div>
-					<div><span>DO read</span><strong data-probe="probe-do">queued</strong></div>
-					<div><span>DO write</span><strong data-probe="probe-counter">queued</strong></div>
-					<div><span>Cache warm</span><strong data-probe="probe-cache">queued</strong></div>
-					<div><span>Trace steps</span><strong data-probe="probe-trace">queued</strong></div>
-					<div><span>Burst logs</span><strong data-probe="probe-burst">queued</strong></div>
-					<div><span>Session refresh</span><strong data-probe="probe-session">queued</strong></div>
-				</section>
+			<section class="shipping" id="shipping">
+				<div>
+					<p class="eyebrow">Fulfilled by Workers</p>
+					<h2>Fast preview checkout, seeded data, no production cart touched.</h2>
+				</div>
+				<ul>
+					<li><span></span> Edge route is healthy</li>
+					<li><span></span> Astro catalog loaded</li>
+					<li><span></span> Durable Object cart updated</li>
+				</ul>
 			</section>
 		</main>
+
 		<script is:inline>
 			const params = new URLSearchParams(window.location.search);
 			const debugId = params.get("debugId") || `browser-run-${Date.now()}`;
 			const headers = { "x-debug-id": debugId };
 			const probes = [
-				["/api/health", "probe-health"],
-				["/api/astro/feed", "probe-astro"],
-				["/api/staging/cart", "probe-do"],
-				["/api/staging/cart/increment", "probe-counter"],
-				["/api/cache/warm", "probe-cache"],
-				["/api/observability/trace", "probe-trace"],
-				["/api/observability/burst", "probe-burst"],
-				["/api/session/refresh", "probe-session"],
+				"/api/health",
+				"/api/astro/feed",
+				"/api/staging/cart",
+				"/api/staging/cart/increment",
+				"/api/cache/warm",
+				"/api/observability/trace",
+				"/api/observability/burst",
+				"/api/session/refresh",
 			];
 
 			const setText = (selector, value) => {
-				const element = document.querySelector(selector);
-				if (element) element.textContent = value;
+				for (const element of document.querySelectorAll(selector)) {
+					element.textContent = value;
+				}
 			};
 
-			setText("[data-debug-id]", debugId);
-			setText("[data-preview-url]", window.location.origin);
-
-			for (const [path, marker] of probes) {
+			for (const path of probes) {
 				fetch(`${path}?debugId=${encodeURIComponent(debugId)}`, { headers })
 					.then(async (response) => {
 						const body = await response.json().catch(() => ({}));
-						const element = document.querySelector(`[data-probe="${marker}"]`);
-						if (element) element.textContent = `${response.status} / ${body.requestId || "logged"}`;
 						if (body.counter) setText("[data-counter]", body.counter);
 						if (body.cartId) setText("[data-cart-id]", body.cartId);
 					})
-					.catch(() => {
-						const element = document.querySelector(`[data-probe="${marker}"]`);
-						if (element) element.textContent = "queued";
-					});
+					.catch(() => {});
 			}
 		</script>
 	</body>
@@ -182,8 +143,8 @@ const products = [
 <style>
 	:root {
 		font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-		color: #1d1d1d;
-		background: #f4f4f0;
+		color: #171717;
+		background: #fbf6ee;
 	}
 
 	* {
@@ -194,374 +155,370 @@ const products = [
 		min-height: 100vh;
 		margin: 0;
 		background:
-			radial-gradient(circle at 85% 8%, rgba(246, 130, 31, 0.24), transparent 24rem),
-			linear-gradient(135deg, #fff7ed 0, #f4f4f0 38%, #ecece7 100%);
-		overflow-x: hidden;
+			radial-gradient(circle at 12% 12%, rgba(246, 130, 31, 0.2), transparent 20rem),
+			radial-gradient(circle at 84% 6%, rgba(251, 191, 36, 0.2), transparent 22rem),
+			#fbf6ee;
 	}
 
 	main {
-		display: grid;
-		grid-template-columns: 220px minmax(0, 1fr);
-		gap: 1rem;
-		width: min(1360px, 100%);
-		min-height: 100vh;
+		width: min(1180px, calc(100% - 2rem));
 		margin: 0 auto;
-		padding: 1.25rem;
+		padding: 1.25rem 0 2rem;
 	}
 
-	.sidebar,
-	.workspace {
-		border: 1px solid #d9d4ca;
-		border-radius: 24px;
-		background: rgba(255, 255, 255, 0.78);
-		box-shadow: 0 24px 70px rgba(63, 43, 23, 0.12);
-		backdrop-filter: blur(18px);
-	}
-
-	.sidebar {
-		position: sticky;
-		top: 1rem;
-		align-self: start;
-		display: grid;
-		gap: 1.5rem;
-		padding: 1rem;
-	}
-
-	.logo-mark {
-		display: grid;
-		width: 44px;
-		height: 44px;
-		place-items: center;
-		border-radius: 14px;
-		color: #fff;
-		background: #f6821f;
-		font-weight: 900;
-		letter-spacing: -0.08em;
-	}
-
-	nav {
-		display: grid;
-		gap: 0.35rem;
-	}
-
-	nav a {
-		border-radius: 14px;
-		padding: 0.85rem 1rem;
-		color: #6b6259;
-		font-weight: 750;
-		text-decoration: none;
-	}
-
-	nav a.active,
-	nav a:hover {
-		color: #1d1d1d;
-		background: #fff1df;
-	}
-
-	.workspace {
+	.site-header {
 		display: flex;
-		flex-direction: column;
+		align-items: center;
+		justify-content: space-between;
 		gap: 1rem;
-		padding: clamp(1rem, 2vw, 1.25rem);
+		border: 1px solid rgba(109, 74, 28, 0.14);
+		border-radius: 999px;
+		padding: 0.7rem 0.8rem;
+		background: rgba(255, 255, 255, 0.74);
+		box-shadow: 0 18px 50px rgba(80, 54, 24, 0.08);
+		backdrop-filter: blur(16px);
 	}
 
-	.topbar,
-	.hero-card,
-	.panel-heading,
-	.counter-row,
-	.event-row,
-	.probe-strip {
+	.brand,
+	nav,
+	.cart-chip,
+	.hero-actions,
+	.product-grid footer,
+	.shipping,
+	.shipping li {
 		display: flex;
 		align-items: center;
 	}
 
-	.topbar,
-	.panel-heading,
-	.counter-row {
-		justify-content: space-between;
-		gap: 1rem;
+	.brand {
+		gap: 0.65rem;
+		color: #171717;
+		font-weight: 850;
+		letter-spacing: -0.03em;
+		text-decoration: none;
 	}
 
-	.eyebrow,
-	.label {
-		margin: 0;
-		color: #8a5a19;
-		font-size: 0.76rem;
-		font-weight: 850;
-		letter-spacing: 0.14em;
+	.brand span {
+		display: grid;
+		width: 38px;
+		height: 38px;
+		place-items: center;
+		border-radius: 13px;
+		color: #fff;
+		background: #f6821f;
+		font-weight: 900;
+		letter-spacing: -0.07em;
+	}
+
+	nav {
+		gap: 0.35rem;
+	}
+
+	nav a,
+	.cart-chip,
+	.hero-actions span {
+		border-radius: 999px;
+		padding: 0.65rem 0.9rem;
+		color: #62574b;
+		font-size: 0.92rem;
+		font-weight: 750;
+		text-decoration: none;
+	}
+
+	nav a:hover,
+	.cart-chip {
+		color: #171717;
+		background: #fff1df;
+	}
+
+	.cart-chip {
+		gap: 0.25rem;
+	}
+
+	.hero {
+		display: grid;
+		grid-template-columns: minmax(0, 1fr) 340px;
+		gap: 1rem;
+		align-items: stretch;
+		margin-top: 1rem;
+	}
+
+	.hero-copy,
+	.feature-card,
+	.product-grid article,
+	.shipping {
+		border: 1px solid rgba(109, 74, 28, 0.14);
+		border-radius: 34px;
+		background: rgba(255, 255, 255, 0.76);
+		box-shadow: 0 24px 80px rgba(80, 54, 24, 0.1);
+	}
+
+	.hero-copy {
+		min-height: 390px;
+		padding: clamp(2rem, 4vw, 3rem);
+		background:
+			radial-gradient(circle at 86% 18%, rgba(246, 130, 31, 0.22), transparent 18rem),
+			linear-gradient(135deg, #ffffff, #fff4e4);
+		color: #171717;
+	}
+
+	.eyebrow {
+		margin: 0 0 1rem;
+		color: #c36b00;
+		font-size: 0.78rem;
+		font-weight: 900;
+		letter-spacing: 0.18em;
 		text-transform: uppercase;
 	}
 
 	h1,
 	h2,
-	h3,
 	p {
 		margin-top: 0;
 	}
 
 	h1 {
-		margin-bottom: 0;
-		font-size: clamp(2rem, 3.5vw, 3.2rem);
-		line-height: 0.98;
-		letter-spacing: -0.06em;
-	}
-
-	h2 {
-		max-width: 720px;
-		margin-bottom: 0.75rem;
-		font-size: clamp(2rem, 3.7vw, 3.7rem);
-		line-height: 0.98;
+		max-width: 650px;
+		margin-bottom: 1rem;
+		font-size: clamp(3rem, 5.5vw, 5.2rem);
+		line-height: 0.96;
 		letter-spacing: -0.07em;
 	}
 
-	h3 {
-		margin-bottom: 0;
-		font-size: 1.35rem;
-		letter-spacing: -0.03em;
+	h2 {
+		margin-bottom: 0.45rem;
+		font-size: 1.32rem;
+		letter-spacing: -0.04em;
 	}
 
-	p {
-		max-width: 760px;
+	.hero-copy p {
+		max-width: 650px;
 		margin-bottom: 0;
-		color: #5f5750;
-		font-size: 0.98rem;
-		line-height: 1.55;
+		color: #6f6255;
+		font-size: 1.08rem;
+		line-height: 1.7;
 	}
 
-	.status-pill,
-	.tag {
-		display: inline-flex;
-		align-items: center;
-		gap: 0.45rem;
+	.hero-actions {
+		gap: 0.7rem;
+		margin-top: 2rem;
+	}
+
+	.hero-actions a,
+	.product-grid button {
+		border: 0;
 		border-radius: 999px;
-		padding: 0.45rem 0.7rem;
-		font-size: 0.82rem;
+		padding: 0.8rem 1rem;
+		color: #171717;
+		background: #fbbf24;
+		font: inherit;
+		font-weight: 850;
+		text-decoration: none;
+	}
+
+	.hero-actions span {
+		color: #5e3a08;
+		background: rgba(246, 130, 31, 0.12);
+	}
+
+	.feature-card {
+		display: grid;
+		grid-template-rows: 1fr auto;
+		gap: 1rem;
+		padding: 1rem;
+		background: #fff;
+	}
+
+	.product-orbit {
+		position: relative;
+		overflow: hidden;
+		min-height: 220px;
+		border-radius: 28px;
+		background: #171717;
+	}
+
+	.product-orbit span {
+		position: absolute;
+		border-radius: 999px;
+	}
+
+	.product-orbit span:nth-child(1) {
+		width: 130px;
+		height: 130px;
+		top: 3rem;
+		left: 50%;
+		transform: translateX(-50%);
+		background: #f6821f;
+	}
+
+	.product-orbit span:nth-child(2) {
+		width: 86px;
+		height: 86px;
+		top: 4.35rem;
+		left: 3.2rem;
+		background: #fbbf24;
+	}
+
+	.product-orbit span:nth-child(3) {
+		width: 96px;
+		height: 96px;
+		top: 4.8rem;
+		right: 3.1rem;
+		background: #ffffff;
+	}
+
+	.cart-summary {
+		border-radius: 24px;
+		padding: 1rem;
+		background: #fff6e8;
+	}
+
+	.feature-card p {
+		margin-bottom: 0.15rem;
+		color: #6f6255;
 		font-weight: 800;
 	}
 
-	.status-pill {
-		color: #14643b;
-		background: #e6f6eb;
+	.feature-card strong {
+		font-size: 5rem;
+		line-height: 0.9;
+		letter-spacing: -0.08em;
 	}
 
-	.status-pill span,
-	.dot {
-		width: 0.55rem;
-		height: 0.55rem;
-		border-radius: 999px;
-		background: #28a745;
-	}
-
-	.hero-card {
-		justify-content: space-between;
-		gap: 2rem;
-		border-radius: 28px;
-		padding: 1.6rem 2rem;
-		color: #fff;
-		background:
-			radial-gradient(circle at 80% 20%, rgba(255, 199, 79, 0.42), transparent 18rem),
-			linear-gradient(135deg, #171717 0%, #332115 56%, #7a3c00 100%);
-		box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.16);
-	}
-
-	.hero-card p,
-	.hero-card .label {
-		color: rgba(255, 255, 255, 0.74);
-	}
-
-	.url-card {
-		display: grid;
-		gap: 0.4rem;
-		min-width: min(360px, 100%);
-		border: 1px solid rgba(255, 255, 255, 0.18);
-		border-radius: 20px;
-		padding: 1rem;
-		background: rgba(255, 255, 255, 0.1);
-	}
-
-	.url-card span,
-	.counter-row span,
-	.metrics span,
-	.probe-strip span,
-	.event-row small {
-		color: #7b7168;
-		font-size: 0.8rem;
+	.cart-label,
+	.feature-card small {
+		display: block;
+		color: #6f6255;
 		font-weight: 750;
 	}
 
-	.url-card strong {
-		overflow: hidden;
-		color: #fff;
+	.feature-card small {
+		margin-top: 0.8rem;
 		font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-		font-size: 0.9rem;
-		text-overflow: ellipsis;
-		white-space: nowrap;
+		font-size: 0.78rem;
 	}
 
-	.metrics,
-	.grid {
+	.product-grid {
 		display: grid;
 		grid-template-columns: repeat(3, 1fr);
 		gap: 1rem;
+		margin-top: 1rem;
 	}
 
-	.metrics article,
-	.panel,
-	.probe-strip {
-		border: 1px solid #ded8ce;
-		border-radius: 22px;
-		background: #fff;
-		box-shadow: 0 12px 28px rgba(45, 35, 25, 0.06);
-	}
-
-	.metrics article {
+	.product-grid article {
 		display: grid;
-		gap: 0.35rem;
-		padding: 0.85rem 1rem;
+		gap: 1rem;
+		padding: 1rem;
 	}
 
-	.metrics strong {
-		font-size: 1.9rem;
-		letter-spacing: -0.05em;
+	.product-art {
+		display: grid;
+		min-height: 190px;
+		place-items: center;
+		border-radius: 26px;
+		background:
+			radial-gradient(circle at 70% 30%, rgba(255, 255, 255, 0.82), transparent 4.5rem),
+			linear-gradient(135deg, var(--accent), #171717);
 	}
 
-	.metrics small {
+	.product-art span {
+		display: grid;
+		width: 86px;
+		height: 86px;
+		place-items: center;
+		border-radius: 28px;
+		color: #171717;
+		background: rgba(255, 255, 255, 0.88);
+		font-size: 3rem;
+		font-weight: 900;
+	}
+
+	.product-grid small {
 		color: #8a5a19;
-		font-weight: 750;
+		font-size: 0.74rem;
+		font-weight: 850;
+		letter-spacing: 0.12em;
 	}
 
-	.grid {
-		grid-template-columns: 1.24fr 0.76fr;
-		align-items: stretch;
+	.product-grid p {
+		margin-bottom: 0;
+		color: #6f6255;
+		line-height: 1.5;
 	}
 
-	.panel {
-		padding: 0.9rem 1rem;
+	.product-grid footer {
+		justify-content: space-between;
+		gap: 1rem;
 	}
 
-	.tag {
-		color: #8a4a00;
+	.product-grid footer strong {
+		font-size: 1.35rem;
+	}
+
+	.product-grid button {
+		padding: 0.68rem 1rem;
 		background: #fff1df;
 	}
 
-	.tag.dark {
-		color: #db6d00;
-		background: #1d1d1d;
+	.shipping {
+		justify-content: space-between;
+		gap: 2rem;
+		margin-top: 1rem;
+		padding: 1.5rem;
 	}
 
-	.counter-row {
-		margin: 0.75rem 0;
-		border-radius: 18px;
-		padding: 0.85rem 1rem;
-		background: #f7f2ea;
-	}
-
-	.counter-row div {
-		display: grid;
-		gap: 0.25rem;
-	}
-
-	.counter-row [data-counter] {
-		font-size: 2.3rem;
+	.shipping h2 {
+		max-width: 560px;
+		margin-bottom: 0;
+		font-size: clamp(1.8rem, 3vw, 2.8rem);
 		line-height: 1;
-		letter-spacing: -0.06em;
 	}
 
-	.counter-row strong {
-		font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-		font-size: 0.9rem;
-	}
-
-	table {
-		width: 100%;
-		border-collapse: collapse;
-		font-size: 0.9rem;
-	}
-
-	th,
-	td {
-		border-bottom: 1px solid #ece5db;
-		padding: 0.55rem 0.5rem;
-		text-align: left;
-	}
-
-	th {
-		color: #7b7168;
-		font-size: 0.75rem;
-		text-transform: uppercase;
-	}
-
-	td:first-child {
-		font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-	}
-
-	.event-list {
+	.shipping ul {
 		display: grid;
-		gap: 0.5rem;
-		margin-top: 0.75rem;
+		gap: 0.65rem;
+		min-width: 310px;
+		margin: 0;
+		padding: 0;
+		list-style: none;
 	}
 
-	.event-row {
-		gap: 0.8rem;
-		border-radius: 16px;
-		padding: 0.65rem 0.75rem;
-		background: #f7f2ea;
+	.shipping li {
+		gap: 0.55rem;
+		border-radius: 999px;
+		padding: 0.75rem 0.9rem;
+		background: #f8efe4;
+		font-weight: 800;
 	}
 
-	.event-row div {
-		display: grid;
-		gap: 0.2rem;
-		min-width: 0;
+	.shipping li span {
+		width: 0.6rem;
+		height: 0.6rem;
+		border-radius: 999px;
+		background: #22c55e;
 	}
 
-	.event-row strong {
-		overflow: hidden;
-		font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-		font-size: 0.82rem;
-		text-overflow: ellipsis;
-		white-space: nowrap;
-	}
-
-	.event-row em {
-		margin-left: auto;
-		color: #14643b;
-		font-style: normal;
-		font-weight: 850;
-	}
-
-	.probe-strip {
-		flex-wrap: wrap;
-		gap: 0.5rem;
-		padding: 0.65rem;
-	}
-
-	.probe-strip div {
-		display: grid;
-		min-width: 150px;
-		gap: 0.25rem;
-		border-radius: 15px;
-		padding: 0.55rem 0.65rem;
-		background: #f7f2ea;
-	}
-
-	.probe-strip strong {
-		overflow: hidden;
-		font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-		font-size: 0.78rem;
-		text-overflow: ellipsis;
-		white-space: nowrap;
-	}
-
-	@media (max-width: 980px) {
-		main,
-		.grid,
-		.metrics,
-		.hero-card {
+	@media (max-width: 920px) {
+		.site-header,
+		.hero,
+		.product-grid,
+		.shipping {
 			grid-template-columns: 1fr;
 		}
 
-		.sidebar {
-			position: static;
+		.site-header,
+		.shipping {
+			align-items: flex-start;
+			border-radius: 26px;
+			flex-direction: column;
+		}
+
+		nav {
+			flex-wrap: wrap;
+		}
+
+		.feature-card {
+			min-height: 360px;
 		}
 	}
 </style>
