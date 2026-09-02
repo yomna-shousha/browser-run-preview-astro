@@ -10,23 +10,23 @@ export class PreviewSession {
     const debugId = request.headers.get("x-debug-id") || url.searchParams.get("debugId") || requestId;
     const previewName = previewFromDebugId(debugId);
     const seeded = await seedCounter(this.state.storage, previewName);
-    let count = (await this.state.storage.get("counter")) ?? seeded.counter;
+    let reservations = (await this.state.storage.get("reservations")) ?? seeded.reservations;
 
-    if (url.pathname.endsWith("/increment")) {
-      count += 1;
-      await this.state.storage.put("counter", count);
+    if (url.pathname.endsWith("/reserve")) {
+      reservations += 1;
+      await this.state.storage.put("reservations", reservations);
     }
 
     const payload = {
-      event: url.pathname.endsWith("/increment") ? "do_counter_incremented" : "do_counter_read",
+      event: url.pathname.endsWith("/reserve") ? "do_rsvp_reserved" : "do_rsvp_read",
       requestId,
       debugId,
       previewName,
       worker: this.env.WORKER_LABEL ?? "my-worker",
       durableObject: "PreviewSession",
-      counterId: seeded.counterId,
-      counter: count,
-      seededValue: seeded.counter,
+      rsvpId: seeded.rsvpId,
+      reservations,
+      seededValue: seeded.reservations,
     };
     console.log(payload);
 
@@ -36,9 +36,11 @@ export class PreviewSession {
       debugId,
       previewName,
       durableObject: "PreviewSession",
-      counterId: seeded.counterId,
-      counter: count,
-      seededValue: seeded.counter,
+      rsvpId: seeded.rsvpId,
+      reservations,
+      capacity: seeded.capacity,
+      seatsLeft: Math.max(seeded.capacity - reservations, 0),
+      seededValue: seeded.reservations,
       region: seeded.region,
       lastEvent: payload.event,
     });
@@ -51,14 +53,14 @@ export default {
     const requestId = crypto.randomUUID();
     const debugId = request.headers.get("x-debug-id") || url.searchParams.get("debugId") || requestId;
 
-    if (url.pathname.startsWith("/api/staging/counter")) {
+    if (url.pathname.startsWith("/api/staging/rsvp")) {
       const previewName = previewFromDebugId(debugId);
-      const id = env.SESSION_DO.idFromName(`astro-counter:${previewName}`);
+      const id = env.SESSION_DO.idFromName(`astro-rsvp:${previewName}`);
       const stub = env.SESSION_DO.get(id);
       console.log({
         ...baseEvent("do_request_forwarded", request, env, requestId, debugId),
         durableObject: "PreviewSession",
-        objectName: `astro-counter:${previewName}`,
+        objectName: `astro-rsvp:${previewName}`,
       });
       return stub.fetch(request);
     }
@@ -121,8 +123,8 @@ export default {
         "preview_opened",
         "browser_run_loaded",
         "astro_island_checked",
-        "do_counter_read",
-        "do_counter_incremented",
+        "do_rsvp_read",
+        "do_rsvp_reserved",
         "session_refresh_succeeded",
         "wobs_correlation_ready",
       ];
@@ -148,12 +150,13 @@ async function seedCounter(storage, previewName) {
 
   const seed = {
     previewName,
-    counterId: `counter_${previewName.replace(/[^a-z0-9]/gi, "_").toLowerCase()}_astro`,
-    counter: 42,
+    rsvpId: `rsvp_${previewName.replace(/[^a-z0-9]/gi, "_").toLowerCase()}_astro`,
+    reservations: 42,
+    capacity: 120,
     region: "WNAM",
   };
   await storage.put("seed", seed);
-  await storage.put("counter", seed.counter);
+  await storage.put("reservations", seed.reservations);
   return seed;
 }
 

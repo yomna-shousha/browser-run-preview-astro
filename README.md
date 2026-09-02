@@ -1,6 +1,6 @@
 # My Worker Preview Astro
 
-Astro counter demo for Cloudflare Workers Previews using a Worker named `my-worker`. Pull requests deploy an isolated Preview, call Cloudflare Browser Run to capture a screenshot, send WOBS-friendly probe traffic, and update a sticky PR comment with the Preview URL, deployment link, and screenshot.
+Astro RSVP demo for Cloudflare Workers Previews using a Worker named `my-worker`. Pull requests deploy an isolated Preview, call Cloudflare Browser Run to capture a screenshot, send WOBS-friendly probe traffic, and update a sticky PR comment with the Preview URL, deployment link, and screenshot.
 
 ## Local Commands
 
@@ -22,7 +22,7 @@ Set these repository secrets before opening PRs:
 
 1. `wrangler preview --name pr-<number>` deploys the branch to an isolated Preview.
 2. Browser Run calls `/browser-rendering/screenshot` against the Preview URL.
-3. The Preview page and workflow send health, Astro data, Durable Object counter, cache, trace, burst, and session-refresh requests with one debug ID.
+3. The Preview page and workflow send health, Astro data, Durable Object RSVP, cache, trace, burst, and session-refresh requests with one debug ID.
 4. The workflow pushes the screenshot to a per-PR `preview-artifacts-pr-<number>` branch.
 5. `actions/github-script` creates or updates a sticky PR comment with the Preview URL, deployment link, probe results, WOBS path, and embedded screenshot.
 

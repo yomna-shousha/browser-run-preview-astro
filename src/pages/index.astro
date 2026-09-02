@@ -1,5 +1,8 @@
 ---
-const signals = ["Edge route healthy", "Astro page loaded", "Counter saved"];
+const capacity = 120;
+const initialReservations = 42;
+const seatsLeft = capacity - initialReservations;
+const highlights = ["Astro deploy walkthrough", "Live Q&A", "Preview-only guest list"];
 ---
 
 <html lang="en">
@@ -9,76 +12,84 @@ const signals = ["Edge route healthy", "Astro page loaded", "Counter saved"];
 		<link rel="icon" href="/favicon.ico" />
 		<meta name="viewport" content="width=device-width" />
 		<meta name="generator" content={Astro.generator} />
-		<title>Astro Counter</title>
+		<title>Edge RSVP</title>
 	</head>
 	<body>
 		<main>
 			<header class="site-header">
-				<a class="brand" href="/" aria-label="Astro Counter home">
+				<a class="brand" href="/" aria-label="Edge RSVP home">
 					<span>cf</span>
-					Astro Counter
+					Edge RSVP
 				</a>
 				<nav aria-label="Main navigation">
-					<a href="#counter">Counter</a>
-					<a href="#how">How it works</a>
+					<a href="#event">Event</a>
+					<a href="#reserve">Reserve</a>
+					<a href="#details">Details</a>
 				</nav>
 				<p>Powered by Durable Objects</p>
 			</header>
 
-			<section class="hero" id="counter">
-				<div class="copy">
-					<p class="eyebrow">Astro on Cloudflare</p>
-					<h1>A tiny counter that survives every refresh.</h1>
+			<section class="hero" id="event">
+				<div class="event-copy">
+					<p class="eyebrow">Astro community night</p>
+					<h1>Reserve a seat for the launch preview.</h1>
 					<p>
-						This preview starts with seeded staging data, then stores each click at the edge. The page stays simple: one count, one button, and state that sticks.
+						A small RSVP page for a preview event. The guest count starts with seeded staging data, then updates at the edge when someone reserves a seat.
 					</p>
+					<div class="event-meta" aria-label="Event metadata">
+						<div><span>Date</span><strong>Sep 12</strong></div>
+						<div><span>Location</span><strong>Online</strong></div>
+						<div><span>Capacity</span><strong>{capacity}</strong></div>
+					</div>
 				</div>
 
-				<article class="counter-card" aria-live="polite">
-					<div class="counter-art" aria-hidden="true">
+				<article class="reservation-card" id="reserve" aria-live="polite">
+					<div class="event-art" aria-hidden="true">
 						<span></span>
 						<span></span>
 						<span></span>
 					</div>
-					<p>Current count</p>
-					<strong data-counter>42</strong>
-					<button type="button" data-increment>Count one more</button>
-					<small>Saved for this preview session</small>
+					<p>Reserved seats</p>
+					<strong data-reservations>{initialReservations}</strong>
+					<div class="meter" aria-label={`${seatsLeft} seats left`}><span data-meter style={`width: ${(initialReservations / capacity) * 100}%`}></span></div>
+					<small><span data-seats-left>{seatsLeft}</span> seats left</small>
+					<button type="button" data-reserve>Reserve my seat</button>
 				</article>
 			</section>
 
-			<section class="details" id="how">
+			<section class="details" id="details">
 				<div>
-					<p class="eyebrow">Built for previews</p>
-					<h2>Refresh the page and the number is still there.</h2>
+					<p class="eyebrow">Why this is in preview</p>
+					<h2>The page behaves like a real RSVP flow without touching production data.</h2>
 				</div>
 				<ul>
-					{signals.map((signal) => <li><span></span>{signal}</li>)}
+					{highlights.map((highlight) => <li><span></span>{highlight}</li>)}
 				</ul>
 			</section>
 		</main>
 
-		<script is:inline>
+		<script is:inline define:vars={{ capacity }}>
 			const params = new URLSearchParams(window.location.search);
 			const debugId = params.get("debugId") || `browser-run-${Date.now()}`;
 			const headers = { "x-debug-id": debugId };
 
-			const setCounter = (value) => {
-				for (const element of document.querySelectorAll("[data-counter]")) {
-					element.textContent = value;
-				}
+			const updateReservationUI = (count) => {
+				const safeCount = Math.min(Number(count) || 0, capacity);
+				const seatsLeft = Math.max(capacity - safeCount, 0);
+				document.querySelector("[data-reservations]").textContent = safeCount;
+				document.querySelector("[data-seats-left]").textContent = seatsLeft;
+				document.querySelector("[data-meter]").style.width = `${(safeCount / capacity) * 100}%`;
 			};
 
-			const loadCounter = async (path = "/api/staging/counter") => {
+			const loadReservations = async (path = "/api/staging/rsvp") => {
 				const response = await fetch(`${path}?debugId=${encodeURIComponent(debugId)}`, { headers });
 				const body = await response.json();
-				if (body.counter) setCounter(body.counter);
-				return body;
+				if (body.reservations) updateReservationUI(body.reservations);
 			};
 
-			loadCounter().catch(() => {});
-			document.querySelector("[data-increment]")?.addEventListener("click", () => {
-				loadCounter("/api/staging/counter/increment").catch(() => {});
+			loadReservations().catch(() => {});
+			document.querySelector("[data-reserve]")?.addEventListener("click", () => {
+				loadReservations("/api/staging/rsvp/reserve").catch(() => {});
 			});
 
 			for (const path of [
@@ -110,8 +121,8 @@ const signals = ["Edge route healthy", "Astro page loaded", "Counter saved"];
 		min-height: 100vh;
 		margin: 0;
 		background:
-			radial-gradient(circle at 14% 12%, rgba(246, 130, 31, 0.2), transparent 20rem),
-			radial-gradient(circle at 84% 10%, rgba(251, 191, 36, 0.2), transparent 22rem),
+			radial-gradient(circle at 14% 10%, rgba(246, 130, 31, 0.2), transparent 20rem),
+			radial-gradient(circle at 84% 12%, rgba(251, 191, 36, 0.2), transparent 22rem),
 			#fbf6ee;
 	}
 
@@ -136,6 +147,7 @@ const signals = ["Edge route healthy", "Astro page loaded", "Counter saved"];
 
 	.brand,
 	nav,
+	.event-meta,
 	.details,
 	.details li {
 		display: flex;
@@ -185,7 +197,8 @@ const signals = ["Edge route healthy", "Astro page loaded", "Counter saved"];
 	.site-header p,
 	h1,
 	h2,
-	.copy p {
+	.event-copy p,
+	.reservation-card p {
 		margin: 0;
 	}
 
@@ -196,8 +209,8 @@ const signals = ["Edge route healthy", "Astro page loaded", "Counter saved"];
 		margin-top: 1rem;
 	}
 
-	.copy,
-	.counter-card,
+	.event-copy,
+	.reservation-card,
 	.details {
 		border: 1px solid rgba(109, 74, 28, 0.14);
 		border-radius: 34px;
@@ -205,10 +218,10 @@ const signals = ["Edge route healthy", "Astro page loaded", "Counter saved"];
 		box-shadow: 0 24px 80px rgba(80, 54, 24, 0.1);
 	}
 
-	.copy {
+	.event-copy {
 		display: grid;
 		align-content: center;
-		min-height: 510px;
+		min-height: 520px;
 		padding: clamp(2rem, 5vw, 4rem);
 		background:
 			radial-gradient(circle at 88% 20%, rgba(246, 130, 31, 0.24), transparent 18rem),
@@ -226,12 +239,12 @@ const signals = ["Edge route healthy", "Astro page loaded", "Counter saved"];
 
 	h1 {
 		max-width: 720px;
-		font-size: clamp(3.6rem, 7vw, 6.6rem);
+		font-size: clamp(3.5rem, 6.8vw, 6.3rem);
 		line-height: 0.94;
 		letter-spacing: -0.08em;
 	}
 
-	.copy p:not(.eyebrow) {
+	.event-copy p:not(.eyebrow) {
 		max-width: 620px;
 		margin-top: 1.25rem;
 		color: #6f6255;
@@ -239,34 +252,59 @@ const signals = ["Edge route healthy", "Astro page loaded", "Counter saved"];
 		line-height: 1.7;
 	}
 
-	.counter-card {
+	.event-meta {
+		gap: 0.75rem;
+		margin-top: 2rem;
+	}
+
+	.event-meta div {
 		display: grid;
-		grid-template-rows: 230px auto auto auto auto;
+		gap: 0.18rem;
+		min-width: 112px;
+		border-radius: 20px;
+		padding: 0.8rem 0.9rem;
+		background: rgba(255, 255, 255, 0.72);
+	}
+
+	.event-meta span,
+	.reservation-card p,
+	.reservation-card small {
+		color: #6f6255;
+		font-weight: 750;
+	}
+
+	.event-meta strong {
+		font-size: 1.15rem;
+	}
+
+	.reservation-card {
+		display: grid;
+		grid-template-rows: 220px auto auto auto auto;
 		gap: 0.8rem;
 		padding: 1rem;
 	}
 
-	.counter-art {
+	.event-art {
 		position: relative;
 		overflow: hidden;
 		border-radius: 28px;
 		background: #171717;
 	}
 
-	.counter-art span {
+	.event-art span {
 		position: absolute;
 		border-radius: 999px;
 	}
 
-	.counter-art span:nth-child(1) {
-		width: 135px;
-		height: 135px;
+	.event-art span:nth-child(1) {
+		width: 138px;
+		height: 138px;
 		top: 42px;
 		left: 116px;
 		background: #f6821f;
 	}
 
-	.counter-art span:nth-child(2) {
+	.event-art span:nth-child(2) {
 		width: 94px;
 		height: 94px;
 		top: 66px;
@@ -274,7 +312,7 @@ const signals = ["Edge route healthy", "Astro page loaded", "Counter saved"];
 		background: #fbbf24;
 	}
 
-	.counter-art span:nth-child(3) {
+	.event-art span:nth-child(3) {
 		width: 96px;
 		height: 96px;
 		top: 70px;
@@ -282,19 +320,27 @@ const signals = ["Edge route healthy", "Astro page loaded", "Counter saved"];
 		background: #fff;
 	}
 
-	.counter-card p {
-		margin: 0;
-		color: #6f6255;
-		font-weight: 800;
-	}
-
-	.counter-card strong {
+	.reservation-card strong {
 		font-size: 6rem;
 		line-height: 0.85;
 		letter-spacing: -0.09em;
 	}
 
-	.counter-card button {
+	.meter {
+		overflow: hidden;
+		height: 12px;
+		border-radius: 999px;
+		background: #f6ead9;
+	}
+
+	.meter span {
+		display: block;
+		height: 100%;
+		border-radius: inherit;
+		background: #f6821f;
+	}
+
+	.reservation-card button {
 		width: 100%;
 		border: 0;
 		border-radius: 999px;
@@ -306,12 +352,6 @@ const signals = ["Edge route healthy", "Astro page loaded", "Counter saved"];
 		cursor: pointer;
 	}
 
-	.counter-card small {
-		color: #6f6255;
-		font-weight: 750;
-		text-align: center;
-	}
-
 	.details {
 		justify-content: space-between;
 		gap: 2rem;
@@ -320,8 +360,8 @@ const signals = ["Edge route healthy", "Astro page loaded", "Counter saved"];
 	}
 
 	.details h2 {
-		max-width: 600px;
-		font-size: clamp(2rem, 3.7vw, 3.7rem);
+		max-width: 650px;
+		font-size: clamp(1.9rem, 3.4vw, 3.35rem);
 		line-height: 0.98;
 		letter-spacing: -0.07em;
 	}
@@ -353,12 +393,14 @@ const signals = ["Edge route healthy", "Astro page loaded", "Counter saved"];
 	@media (max-width: 880px) {
 		.site-header,
 		.hero,
-		.details {
+		.details,
+		.event-meta {
 			grid-template-columns: 1fr;
 		}
 
 		.site-header,
-		.details {
+		.details,
+		.event-meta {
 			align-items: flex-start;
 			border-radius: 26px;
 			flex-direction: column;
