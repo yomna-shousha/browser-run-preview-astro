@@ -84,7 +84,7 @@ jobs:
               "CF-Access-Client-Id": $accessClientId,
               "CF-Access-Client-Secret": $accessClientSecret
             },
-            viewport: { width: 1440, height: 1000 },
+            viewport: { width: 1440, height: 1120 },
             selector: "main"
           }')
 
