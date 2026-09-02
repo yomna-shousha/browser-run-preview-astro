@@ -24,7 +24,7 @@ From PR #2's generated Preview comment:
 | Session refresh probe | `500` |
 | Debug ID | `pr-2-32585343570-1` |
 | Failing request ID | `57349584-d938-4f98-9a99-b66d18bfbf29` |
-| WOBS path | `/workers/services/view/browser-run-preview-astro/production/previews/pr-2/observability/events` |
+| WOBS path | `/workers/services/view/my-worker/production/previews/pr-2/observability/events` |
 
 ## WOBS Evidence To Inspect
 

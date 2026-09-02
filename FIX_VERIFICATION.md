@@ -10,7 +10,7 @@ This branch applies the repair described in `WOBS_FINDINGS.md`.
 
 ## Expected PR Comment
 
-The Worker Preview comment should show:
+The Preview comment should show:
 
 | Signal | Expected |
 | --- | --- |

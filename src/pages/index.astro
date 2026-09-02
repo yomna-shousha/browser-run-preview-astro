@@ -1,5 +1,12 @@
 ---
-const checks = ["Preview URL", "Browser Run", "WOBS Signal", "PR comment"];
+const capacity = 120;
+const initialReservations = 42;
+const seatsLeft = capacity - initialReservations;
+const highlights = [
+	{ title: "Preview URLs", detail: "How every pull request gets a shareable environment." },
+	{ title: "Browser checks", detail: "A real browser opens the page before anyone reviews it." },
+	{ title: "Runtime signal", detail: "Worker requests are logged with the same preview debug ID." },
+];
 ---
 
 <html lang="en">
@@ -9,307 +16,443 @@ const checks = ["Preview URL", "Browser Run", "WOBS Signal", "PR comment"];
 		<link rel="icon" href="/favicon.ico" />
 		<meta name="viewport" content="width=device-width" />
 		<meta name="generator" content={Astro.generator} />
-		<title>Preview Control Room</title>
-		<script is:inline>
-			const params = new URLSearchParams(window.location.search);
-			const debugId = params.get("debugId") || `browser-run-${Date.now()}`;
-
-			fetch(`/api/checkout?debugId=${encodeURIComponent(debugId)}`, {
-				headers: { "x-debug-id": debugId },
-			}).catch(() => {});
-
-			fetch(`/api/session/refresh?debugId=${encodeURIComponent(debugId)}`, {
-				headers: { "x-debug-id": debugId },
-			}).catch(() => {});
-		</script>
+		<title>Previews Launch RSVP</title>
 	</head>
 	<body>
 		<main>
-			<section class="hero" aria-label="Preview control room">
-				<div class="signal-card">
-					<p class="eyebrow">Agent Review Loop</p>
-					<h1>Preview is visible, and the runtime agrees.</h1>
-					<p class="lede">
-						Browser Run can prove the Preview renders. WOBS shows what happened inside the Worker
-						while the browser clicked through the Preview.
+			<header class="site-header">
+				<a class="brand" href="/" aria-label="Previews Launch RSVP home">
+					<span>cf</span>
+					Previews Launch
+				</a>
+				<nav aria-label="Main navigation">
+					<a href="#event">Event</a>
+					<a href="#rsvp">RSVP</a>
+					<a href="#details">Details</a>
+				</nav>
+				<p>Powered by Durable Objects</p>
+			</header>
+
+			<section class="hero" id="event">
+				<div class="event-copy">
+					<p class="eyebrow">Cloudflare Workers</p>
+					<h1>Join the Previews launch.</h1>
+					<p>
+						Save a seat for a short walkthrough of Worker Previews, Browser Run screenshots, and the runtime signals that make review comments useful.
 					</p>
-					<div class="actions">
-						<a href="https://developers.cloudflare.com/workers/previews/">Workers Previews</a>
-						<span>Runtime probe: clean</span>
-					</div>
-					<div class="runtime-alert" role="status">
-						<strong>Verified fix</strong>
-						<span>Session refresh is healthy in this Preview. Browser Run captures the UI and WOBS confirms the Worker request succeeds.</span>
+					<div class="event-meta" aria-label="Event metadata">
+						<div><span>Date</span><strong>Sep 12</strong></div>
+						<div><span>Time</span><strong>10:00 AM PT</strong></div>
+						<div><span>Place</span><strong>Online</strong></div>
 					</div>
 				</div>
 
-				<div class="orbit" aria-hidden="true">
-					<div class="ring ring-one"></div>
-					<div class="ring ring-two"></div>
-					<div class="core">PR</div>
-					<div class="satellite satellite-a">URL</div>
-					<div class="satellite satellite-b">PNG</div>
-					<div class="satellite satellite-c">QA</div>
-				</div>
+				<form class="rsvp-card" id="rsvp" aria-label="Reserve a seat">
+					<div class="card-top">
+						<p class="eyebrow">RSVP</p>
+						<span><strong data-seats-left>{seatsLeft}</strong> seats left</span>
+					</div>
+
+					<label>
+						Name
+						<input value="Preview Guest" aria-label="Name" />
+					</label>
+					<label>
+						Email
+						<input value="guest@example.com" aria-label="Email" />
+					</label>
+
+					<div class="reservation-count">
+						<span>Reserved</span>
+						<strong data-reservations>{initialReservations}</strong>
+					</div>
+					<div class="meter" aria-label={`${seatsLeft} seats left`}><span data-meter style={`width: ${(initialReservations / capacity) * 100}%`}></span></div>
+					<button type="button" data-reserve>Reserve my seat</button>
+				</form>
 			</section>
 
-			<section class="checks" aria-label="Automation checklist">
-				{checks.map((check, index) => <article style={`--index: ${index + 1}`}>{check}</article>)}
+			<section class="details" id="details" aria-label="What to expect">
+				<div class="section-heading">
+					<p class="eyebrow">What to expect</p>
+					<h2>A preview flow you can see and verify.</h2>
+				</div>
+				<div class="detail-grid">
+					{highlights.map((highlight) => (
+						<article>
+							<span></span>
+							<h3>{highlight.title}</h3>
+							<p>{highlight.detail}</p>
+						</article>
+					))}
+				</div>
 			</section>
 		</main>
+
+		<script is:inline define:vars={{ capacity }}>
+			const params = new URLSearchParams(window.location.search);
+			const debugId = params.get("debugId") || `browser-run-${Date.now()}`;
+			const headers = { "x-debug-id": debugId };
+
+			const updateReservationUI = (count) => {
+				const safeCount = Math.min(Number(count) || 0, capacity);
+				const seatsLeft = Math.max(capacity - safeCount, 0);
+				document.querySelector("[data-reservations]").textContent = safeCount;
+				document.querySelector("[data-seats-left]").textContent = seatsLeft;
+				document.querySelector("[data-meter]").style.width = `${(safeCount / capacity) * 100}%`;
+			};
+
+			const loadReservations = async (path = "/api/staging/rsvp") => {
+				const response = await fetch(`${path}?debugId=${encodeURIComponent(debugId)}`, { headers });
+				const body = await response.json();
+				if (body.reservations) updateReservationUI(body.reservations);
+			};
+
+			loadReservations().catch(() => {});
+			document.querySelector("[data-reserve]")?.addEventListener("click", () => {
+				loadReservations("/api/staging/rsvp/reserve").catch(() => {});
+			});
+
+			for (const path of [
+				"/api/health",
+				"/api/astro/feed",
+				"/api/cache/warm",
+				"/api/observability/trace",
+				"/api/observability/burst",
+				"/api/session/refresh",
+			]) {
+				fetch(`${path}?debugId=${encodeURIComponent(debugId)}`, { headers }).catch(() => {});
+			}
+		</script>
 	</body>
 </html>
 
 <style>
 	:root {
-		font-family:
-			"Space Grotesk", Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
-			"Segoe UI", sans-serif;
-		color: #f8fbff;
-		background: #05050f;
+		font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+		color: #171717;
+		background: #fbf6ee;
+	}
+
+	* {
+		box-sizing: border-box;
 	}
 
 	body {
 		min-height: 100vh;
 		margin: 0;
 		background:
-			linear-gradient(120deg, rgba(255, 0, 128, 0.22), transparent 30%),
-			radial-gradient(circle at 75% 20%, rgba(0, 240, 255, 0.42), transparent 24rem),
-			radial-gradient(circle at 16% 80%, rgba(255, 221, 0, 0.26), transparent 22rem),
-			#05050f;
-		overflow-x: hidden;
-	}
-
-	body::before {
-		position: fixed;
-		inset: 0;
-		pointer-events: none;
-		content: "";
-		background-image:
-			linear-gradient(rgba(255, 255, 255, 0.06) 1px, transparent 1px),
-			linear-gradient(90deg, rgba(255, 255, 255, 0.06) 1px, transparent 1px);
-		background-size: 58px 58px;
-		mask-image: linear-gradient(to bottom, black, transparent 85%);
+			radial-gradient(circle at 12% 10%, rgba(246, 130, 31, 0.18), transparent 19rem),
+			radial-gradient(circle at 86% 12%, rgba(251, 191, 36, 0.22), transparent 22rem),
+			#fbf6ee;
 	}
 
 	main {
-		box-sizing: border-box;
-		width: min(1180px, 100%);
-		min-height: 100vh;
+		width: min(1060px, calc(100% - 2rem));
 		margin: 0 auto;
-		padding: clamp(1.5rem, 4vw, 4rem);
+		padding: 1.5rem 0 2rem;
+	}
+
+	.site-header {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 1rem;
+		border: 1px solid rgba(109, 74, 28, 0.12);
+		border-radius: 999px;
+		padding: 0.7rem 0.85rem;
+		background: rgba(255, 255, 255, 0.82);
+		box-shadow: 0 18px 50px rgba(80, 54, 24, 0.07);
+		backdrop-filter: blur(16px);
+	}
+
+	.brand,
+	nav,
+	.card-top,
+	.event-meta,
+	.detail-grid {
+		display: flex;
+		align-items: center;
+	}
+
+	.brand {
+		gap: 0.65rem;
+		color: #171717;
+		font-weight: 850;
+		letter-spacing: -0.03em;
+		text-decoration: none;
+	}
+
+	.brand span {
+		display: grid;
+		width: 36px;
+		height: 36px;
+		place-items: center;
+		border-radius: 13px;
+		color: #fff;
+		background: #f6821f;
+		font-weight: 900;
+		letter-spacing: -0.07em;
+	}
+
+	nav {
+		gap: 0.3rem;
+	}
+
+	nav a,
+	.site-header p {
+		border-radius: 999px;
+		padding: 0.58rem 0.82rem;
+		color: #62574b;
+		font-size: 0.9rem;
+		font-weight: 750;
+		text-decoration: none;
+	}
+
+	nav a:hover,
+	.site-header p {
+		color: #171717;
+		background: #fff1df;
+	}
+
+	.site-header p,
+	h1,
+	h2,
+	h3,
+	p {
+		margin: 0;
 	}
 
 	.hero {
 		display: grid;
-		grid-template-columns: minmax(0, 1.08fr) minmax(300px, 0.92fr);
-		gap: clamp(2rem, 6vw, 6rem);
-		align-items: center;
-		min-height: 78vh;
+		grid-template-columns: minmax(0, 1fr) 340px;
+		gap: 1rem;
+		margin-top: 1rem;
 	}
 
-	.signal-card {
-		position: relative;
-		isolation: isolate;
-		padding: clamp(1.5rem, 4vw, 3rem);
-		border: 1px solid rgba(255, 255, 255, 0.22);
-		border-radius: 36px;
-		background: rgba(8, 10, 28, 0.7);
-		box-shadow: 0 24px 90px rgba(0, 0, 0, 0.46), inset 0 1px 0 rgba(255, 255, 255, 0.2);
-		backdrop-filter: blur(20px);
+	.event-copy,
+	.rsvp-card,
+	.details {
+		border: 1px solid rgba(109, 74, 28, 0.12);
+		border-radius: 30px;
+		background: rgba(255, 255, 255, 0.82);
+		box-shadow: 0 24px 70px rgba(80, 54, 24, 0.08);
 	}
 
-	.signal-card::after {
-		position: absolute;
-		inset: -2px;
-		z-index: -1;
-		content: "";
-		border-radius: inherit;
-		background: linear-gradient(135deg, #00f0ff, #ff2ea6, #ffdf3d);
-		filter: blur(24px);
-		opacity: 0.36;
+	.event-copy {
+		display: grid;
+		align-content: center;
+		min-height: 430px;
+		padding: clamp(2rem, 5vw, 3.6rem);
+		background:
+			radial-gradient(circle at 88% 16%, rgba(246, 130, 31, 0.18), transparent 17rem),
+			linear-gradient(135deg, #ffffff, #fff5e8);
 	}
 
 	.eyebrow {
-		margin: 0 0 1rem;
-		font-size: 0.88rem;
+		margin-bottom: 0.8rem;
+		color: #c36b00;
+		font-size: 0.75rem;
 		font-weight: 900;
-		letter-spacing: 0.22em;
+		letter-spacing: 0.18em;
 		text-transform: uppercase;
-		color: #7afcff;
 	}
 
 	h1 {
-		max-width: 760px;
-		margin: 0;
-		font-size: clamp(3.5rem, 9vw, 8.6rem);
-		line-height: 0.82;
-		letter-spacing: -0.09em;
-		text-wrap: balance;
-	}
-
-	.lede {
-		max-width: 660px;
-		margin: 2rem 0 0;
-		font-size: clamp(1.05rem, 2vw, 1.38rem);
-		line-height: 1.65;
-		color: rgba(248, 251, 255, 0.76);
-	}
-
-	.actions {
-		display: flex;
-		flex-wrap: wrap;
-		gap: 0.9rem;
-		margin-top: 2rem;
-	}
-
-	.actions a,
-	.actions span {
-		display: inline-flex;
-		align-items: center;
-		min-height: 48px;
-		border-radius: 999px;
-		padding: 0 1rem;
+		max-width: 640px;
+		font-size: clamp(3.2rem, 6vw, 5.4rem);
 		font-weight: 850;
-		text-decoration: none;
+		line-height: 0.98;
+		letter-spacing: -0.075em;
 	}
 
-	.actions a {
-		color: #061018;
-		background: #7afcff;
-		box-shadow: 0 0 40px rgba(122, 252, 255, 0.45);
+	.event-copy p:not(.eyebrow) {
+		max-width: 600px;
+		margin-top: 1.2rem;
+		color: #6f6255;
+		font-size: 1.04rem;
+		line-height: 1.65;
 	}
 
-	.actions span {
-		border: 1px solid rgba(255, 255, 255, 0.24);
-		color: #ffdf3d;
-		background: rgba(255, 255, 255, 0.08);
+	.event-meta {
+		gap: 0.7rem;
+		margin-top: 1.7rem;
 	}
 
-	.runtime-alert {
+	.event-meta div {
+		display: grid;
+		gap: 0.15rem;
+		min-width: 116px;
+		border-radius: 18px;
+		padding: 0.78rem 0.9rem;
+		background: rgba(255, 255, 255, 0.7);
+	}
+
+	.event-meta span,
+	.rsvp-card label,
+	.card-top span,
+	.reservation-count span {
+		color: #71665a;
+		font-size: 0.85rem;
+		font-weight: 760;
+	}
+
+	.event-meta strong {
+		font-size: 1.04rem;
+	}
+
+	.rsvp-card {
+		display: grid;
+		gap: 0.9rem;
+		padding: 1.2rem;
+	}
+
+	.card-top {
+		justify-content: space-between;
+		gap: 1rem;
+	}
+
+	.card-top .eyebrow {
+		margin: 0;
+	}
+
+	.card-top span {
+		border-radius: 999px;
+		padding: 0.45rem 0.7rem;
+		background: #fff1df;
+	}
+
+	.rsvp-card label {
 		display: grid;
 		gap: 0.35rem;
-		margin-top: 1.25rem;
-		border: 1px solid rgba(122, 252, 255, 0.52);
+	}
+
+	.rsvp-card input {
+		width: 100%;
+		border: 1px solid #eadfce;
+		border-radius: 16px;
+		padding: 0.85rem 0.9rem;
+		color: #171717;
+		background: #fffaf4;
+		font: inherit;
+		font-weight: 700;
+	}
+
+	.reservation-count {
+		display: flex;
+		align-items: end;
+		justify-content: space-between;
+		gap: 1rem;
 		border-radius: 22px;
 		padding: 1rem;
-		background: rgba(122, 252, 255, 0.12);
-		box-shadow: 0 0 46px rgba(122, 252, 255, 0.18);
+		background: #fff6e8;
 	}
 
-	.runtime-alert strong {
-		font-size: 0.82rem;
-		letter-spacing: 0.16em;
-		text-transform: uppercase;
-		color: #7afcff;
+	.reservation-count strong {
+		font-size: 4.8rem;
+		font-weight: 850;
+		line-height: 0.85;
+		letter-spacing: -0.08em;
 	}
 
-	.runtime-alert span {
-		max-width: 640px;
-		color: rgba(248, 251, 255, 0.82);
-		line-height: 1.5;
-	}
-
-	.orbit {
-		position: relative;
-		aspect-ratio: 1;
-		min-height: 420px;
-	}
-
-	.ring,
-	.core,
-	.satellite {
-		position: absolute;
+	.meter {
+		overflow: hidden;
+		height: 10px;
 		border-radius: 999px;
+		background: #f6ead9;
 	}
 
-	.ring {
-		inset: 12%;
-		border: 2px solid rgba(122, 252, 255, 0.34);
-		box-shadow: 0 0 80px rgba(0, 240, 255, 0.22);
-	}
-
-	.ring-two {
-		inset: 24%;
-		border-color: rgba(255, 46, 166, 0.36);
-		transform: rotate(28deg) scaleX(0.74);
-	}
-
-	.core {
-		inset: 32%;
-		display: grid;
-		place-items: center;
-		font-size: clamp(5rem, 10vw, 8.5rem);
-		font-weight: 950;
-		letter-spacing: -0.12em;
-		color: #05050f;
-		background: conic-gradient(from 180deg, #7afcff, #ff2ea6, #ffdf3d, #7afcff);
-		box-shadow: 0 0 90px rgba(255, 46, 166, 0.4);
-	}
-
-	.satellite {
-		display: grid;
-		place-items: center;
-		width: 86px;
-		height: 86px;
-		font-weight: 900;
-		color: #05050f;
-		background: #f8fbff;
-		box-shadow: 0 0 40px rgba(248, 251, 255, 0.42);
-	}
-
-	.satellite-a {
-		top: 8%;
-		right: 15%;
-	}
-
-	.satellite-b {
-		bottom: 12%;
-		right: 6%;
-		background: #ffdf3d;
-	}
-
-	.satellite-c {
-		bottom: 18%;
-		left: 4%;
-		background: #7afcff;
-	}
-
-	.checks {
-		display: grid;
-		grid-template-columns: repeat(4, 1fr);
-		gap: 1rem;
-		margin-top: 1.5rem;
-	}
-
-	.checks article {
-		min-height: 110px;
-		border: 1px solid rgba(255, 255, 255, 0.18);
-		border-radius: 26px;
-		padding: 1rem;
-		background: rgba(255, 255, 255, 0.08);
-		box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.16);
-		font-size: clamp(1.1rem, 2.2vw, 1.8rem);
-		font-weight: 900;
-	}
-
-	.checks article::before {
+	.meter span {
 		display: block;
-		margin-bottom: 1rem;
-		content: "0" var(--index);
-		font-size: 0.8rem;
-		letter-spacing: 0.18em;
-		color: #ffdf3d;
+		height: 100%;
+		border-radius: inherit;
+		background: #f6821f;
 	}
 
-	@media (max-width: 860px) {
+	.rsvp-card button {
+		width: 100%;
+		border: 0;
+		border-radius: 999px;
+		padding: 0.9rem 1rem;
+		color: #171717;
+		background: #fbbf24;
+		font: inherit;
+		font-weight: 850;
+		cursor: pointer;
+	}
+
+	.details {
+		margin-top: 1rem;
+		padding: 1.35rem;
+	}
+
+	.section-heading {
+		display: flex;
+		align-items: end;
+		justify-content: space-between;
+		gap: 1.5rem;
+		margin-bottom: 1rem;
+	}
+
+	.section-heading h2 {
+		max-width: 520px;
+		font-size: clamp(1.8rem, 3vw, 2.75rem);
+		font-weight: 850;
+		line-height: 1;
+		letter-spacing: -0.06em;
+	}
+
+	.detail-grid {
+		gap: 0.85rem;
+	}
+
+	.detail-grid article {
+		flex: 1;
+		min-height: 132px;
+		border-radius: 22px;
+		padding: 1rem;
+		background: #fff8ee;
+	}
+
+	.detail-grid article > span {
+		display: block;
+		width: 0.62rem;
+		height: 0.62rem;
+		margin-bottom: 1rem;
+		border-radius: 999px;
+		background: #22c55e;
+	}
+
+	.detail-grid h3 {
+		margin-bottom: 0.35rem;
+		font-size: 1rem;
+	}
+
+	.detail-grid p {
+		color: #71665a;
+		font-size: 0.94rem;
+		line-height: 1.45;
+	}
+
+	@media (max-width: 880px) {
+		.site-header,
 		.hero,
-		.checks {
+		.section-heading,
+		.event-meta,
+		.detail-grid {
 			grid-template-columns: 1fr;
 		}
 
-		.orbit {
-			min-height: 300px;
+		.site-header,
+		.section-heading,
+		.event-meta,
+		.detail-grid {
+			align-items: flex-start;
+			border-radius: 26px;
+			flex-direction: column;
+		}
+
+		nav {
+			flex-wrap: wrap;
 		}
 	}
 </style>

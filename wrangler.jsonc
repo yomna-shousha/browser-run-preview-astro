@@ -1,6 +1,6 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
-  "name": "browser-run-preview-astro",
+  "name": "my-worker",
   "main": "src/worker.js",
   "compatibility_date": "2026-06-24",
   "workers_dev": true,
@@ -21,10 +21,35 @@
       "persist": true
     }
   },
+  "durable_objects": {
+    "bindings": [
+      {
+        "name": "SESSION_DO",
+        "class_name": "PreviewSession"
+      }
+    ]
+  },
+  "migrations": [
+    {
+      "tag": "v1",
+      "new_sqlite_classes": [
+        "PreviewSession"
+      ]
+    }
+  ],
   "vars": {
-    "APP_ENV": "production"
+    "APP_ENV": "production",
+    "WORKER_LABEL": "my-worker"
   },
   "previews": {
+    "durable_objects": {
+      "bindings": [
+        {
+          "name": "SESSION_DO",
+          "class_name": "PreviewSession"
+        }
+      ]
+    },
     "observability": {
       "enabled": true,
       "logs": {
@@ -39,7 +64,8 @@
       }
     },
     "vars": {
-      "APP_ENV": "preview"
+      "APP_ENV": "preview",
+      "WORKER_LABEL": "my-worker"
     }
   }
 }
