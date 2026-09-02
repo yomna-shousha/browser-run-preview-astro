@@ -2,7 +2,11 @@
 const capacity = 120;
 const initialReservations = 42;
 const seatsLeft = capacity - initialReservations;
-const highlights = ["Astro deploy walkthrough", "Live Q&A", "Preview-only guest list"];
+const highlights = [
+	{ title: "Preview URLs", detail: "How every pull request gets a shareable environment." },
+	{ title: "Browser checks", detail: "A real browser opens the page before anyone reviews it." },
+	{ title: "Runtime signal", detail: "Worker requests are logged with the same preview debug ID." },
+];
 ---
 
 <html lang="en">
@@ -12,18 +16,18 @@ const highlights = ["Astro deploy walkthrough", "Live Q&A", "Preview-only guest 
 		<link rel="icon" href="/favicon.ico" />
 		<meta name="viewport" content="width=device-width" />
 		<meta name="generator" content={Astro.generator} />
-		<title>Edge RSVP</title>
+		<title>Previews Launch RSVP</title>
 	</head>
 	<body>
 		<main>
 			<header class="site-header">
-				<a class="brand" href="/" aria-label="Edge RSVP home">
+				<a class="brand" href="/" aria-label="Previews Launch RSVP home">
 					<span>cf</span>
-					Edge RSVP
+					Previews Launch
 				</a>
 				<nav aria-label="Main navigation">
 					<a href="#event">Event</a>
-					<a href="#reserve">Reserve</a>
+					<a href="#rsvp">RSVP</a>
 					<a href="#details">Details</a>
 				</nav>
 				<p>Powered by Durable Objects</p>
@@ -31,40 +35,56 @@ const highlights = ["Astro deploy walkthrough", "Live Q&A", "Preview-only guest 
 
 			<section class="hero" id="event">
 				<div class="event-copy">
-					<p class="eyebrow">Astro community night</p>
-					<h1>Reserve a seat for the launch preview.</h1>
+					<p class="eyebrow">Cloudflare Workers</p>
+					<h1>Join the Previews launch.</h1>
 					<p>
-						A small RSVP page for a preview event. The guest count starts with seeded staging data, then updates at the edge when someone reserves a seat.
+						Save a seat for a short walkthrough of Worker Previews, Browser Run screenshots, and the runtime signals that make review comments useful.
 					</p>
 					<div class="event-meta" aria-label="Event metadata">
 						<div><span>Date</span><strong>Sep 12</strong></div>
-						<div><span>Location</span><strong>Online</strong></div>
-						<div><span>Capacity</span><strong>{capacity}</strong></div>
+						<div><span>Time</span><strong>10:00 AM PT</strong></div>
+						<div><span>Place</span><strong>Online</strong></div>
 					</div>
 				</div>
 
-				<article class="reservation-card" id="reserve" aria-live="polite">
-					<div class="event-art" aria-hidden="true">
-						<span></span>
-						<span></span>
-						<span></span>
+				<form class="rsvp-card" id="rsvp" aria-label="Reserve a seat">
+					<div class="card-top">
+						<p class="eyebrow">RSVP</p>
+						<span><strong data-seats-left>{seatsLeft}</strong> seats left</span>
 					</div>
-					<p>Reserved seats</p>
-					<strong data-reservations>{initialReservations}</strong>
+
+					<label>
+						Name
+						<input value="Preview Guest" aria-label="Name" />
+					</label>
+					<label>
+						Email
+						<input value="guest@example.com" aria-label="Email" />
+					</label>
+
+					<div class="reservation-count">
+						<span>Reserved</span>
+						<strong data-reservations>{initialReservations}</strong>
+					</div>
 					<div class="meter" aria-label={`${seatsLeft} seats left`}><span data-meter style={`width: ${(initialReservations / capacity) * 100}%`}></span></div>
-					<small><span data-seats-left>{seatsLeft}</span> seats left</small>
 					<button type="button" data-reserve>Reserve my seat</button>
-				</article>
+				</form>
 			</section>
 
-			<section class="details" id="details">
-				<div>
-					<p class="eyebrow">Why this is in preview</p>
-					<h2>The page behaves like a real RSVP flow without touching production data.</h2>
+			<section class="details" id="details" aria-label="What to expect">
+				<div class="section-heading">
+					<p class="eyebrow">What to expect</p>
+					<h2>A preview flow you can see and verify.</h2>
 				</div>
-				<ul>
-					{highlights.map((highlight) => <li><span></span>{highlight}</li>)}
-				</ul>
+				<div class="detail-grid">
+					{highlights.map((highlight) => (
+						<article>
+							<span></span>
+							<h3>{highlight.title}</h3>
+							<p>{highlight.detail}</p>
+						</article>
+					))}
+				</div>
 			</section>
 		</main>
 
@@ -121,13 +141,13 @@ const highlights = ["Astro deploy walkthrough", "Live Q&A", "Preview-only guest 
 		min-height: 100vh;
 		margin: 0;
 		background:
-			radial-gradient(circle at 14% 10%, rgba(246, 130, 31, 0.2), transparent 20rem),
-			radial-gradient(circle at 84% 12%, rgba(251, 191, 36, 0.2), transparent 22rem),
+			radial-gradient(circle at 12% 10%, rgba(246, 130, 31, 0.18), transparent 19rem),
+			radial-gradient(circle at 86% 12%, rgba(251, 191, 36, 0.22), transparent 22rem),
 			#fbf6ee;
 	}
 
 	main {
-		width: min(1120px, calc(100% - 2rem));
+		width: min(1060px, calc(100% - 2rem));
 		margin: 0 auto;
 		padding: 1.5rem 0 2rem;
 	}
@@ -137,19 +157,19 @@ const highlights = ["Astro deploy walkthrough", "Live Q&A", "Preview-only guest 
 		align-items: center;
 		justify-content: space-between;
 		gap: 1rem;
-		border: 1px solid rgba(109, 74, 28, 0.14);
+		border: 1px solid rgba(109, 74, 28, 0.12);
 		border-radius: 999px;
-		padding: 0.75rem 0.9rem;
-		background: rgba(255, 255, 255, 0.78);
-		box-shadow: 0 18px 50px rgba(80, 54, 24, 0.08);
+		padding: 0.7rem 0.85rem;
+		background: rgba(255, 255, 255, 0.82);
+		box-shadow: 0 18px 50px rgba(80, 54, 24, 0.07);
 		backdrop-filter: blur(16px);
 	}
 
 	.brand,
 	nav,
+	.card-top,
 	.event-meta,
-	.details,
-	.details li {
+	.detail-grid {
 		display: flex;
 		align-items: center;
 	}
@@ -164,8 +184,8 @@ const highlights = ["Astro deploy walkthrough", "Live Q&A", "Preview-only guest 
 
 	.brand span {
 		display: grid;
-		width: 38px;
-		height: 38px;
+		width: 36px;
+		height: 36px;
 		place-items: center;
 		border-radius: 13px;
 		color: #fff;
@@ -175,15 +195,15 @@ const highlights = ["Astro deploy walkthrough", "Live Q&A", "Preview-only guest 
 	}
 
 	nav {
-		gap: 0.4rem;
+		gap: 0.3rem;
 	}
 
 	nav a,
 	.site-header p {
 		border-radius: 999px;
-		padding: 0.65rem 0.9rem;
+		padding: 0.58rem 0.82rem;
 		color: #62574b;
-		font-size: 0.92rem;
+		font-size: 0.9rem;
 		font-weight: 750;
 		text-decoration: none;
 	}
@@ -197,138 +217,146 @@ const highlights = ["Astro deploy walkthrough", "Live Q&A", "Preview-only guest 
 	.site-header p,
 	h1,
 	h2,
-	.event-copy p,
-	.reservation-card p {
+	h3,
+	p {
 		margin: 0;
 	}
 
 	.hero {
 		display: grid;
-		grid-template-columns: minmax(0, 1fr) 370px;
+		grid-template-columns: minmax(0, 1fr) 340px;
 		gap: 1rem;
 		margin-top: 1rem;
 	}
 
 	.event-copy,
-	.reservation-card,
+	.rsvp-card,
 	.details {
-		border: 1px solid rgba(109, 74, 28, 0.14);
-		border-radius: 34px;
-		background: rgba(255, 255, 255, 0.78);
-		box-shadow: 0 24px 80px rgba(80, 54, 24, 0.1);
+		border: 1px solid rgba(109, 74, 28, 0.12);
+		border-radius: 30px;
+		background: rgba(255, 255, 255, 0.82);
+		box-shadow: 0 24px 70px rgba(80, 54, 24, 0.08);
 	}
 
 	.event-copy {
 		display: grid;
 		align-content: center;
-		min-height: 520px;
-		padding: clamp(2rem, 5vw, 4rem);
+		min-height: 430px;
+		padding: clamp(2rem, 5vw, 3.6rem);
 		background:
-			radial-gradient(circle at 88% 20%, rgba(246, 130, 31, 0.24), transparent 18rem),
-			linear-gradient(135deg, #ffffff, #fff4e4);
+			radial-gradient(circle at 88% 16%, rgba(246, 130, 31, 0.18), transparent 17rem),
+			linear-gradient(135deg, #ffffff, #fff5e8);
 	}
 
 	.eyebrow {
-		margin-bottom: 1rem;
+		margin-bottom: 0.8rem;
 		color: #c36b00;
-		font-size: 0.78rem;
+		font-size: 0.75rem;
 		font-weight: 900;
 		letter-spacing: 0.18em;
 		text-transform: uppercase;
 	}
 
 	h1 {
-		max-width: 720px;
-		font-size: clamp(3.5rem, 6.8vw, 6.3rem);
-		line-height: 0.94;
-		letter-spacing: -0.08em;
+		max-width: 640px;
+		font-size: clamp(3.2rem, 6vw, 5.4rem);
+		font-weight: 850;
+		line-height: 0.98;
+		letter-spacing: -0.075em;
 	}
 
 	.event-copy p:not(.eyebrow) {
-		max-width: 620px;
-		margin-top: 1.25rem;
+		max-width: 600px;
+		margin-top: 1.2rem;
 		color: #6f6255;
-		font-size: 1.08rem;
-		line-height: 1.7;
+		font-size: 1.04rem;
+		line-height: 1.65;
 	}
 
 	.event-meta {
-		gap: 0.75rem;
-		margin-top: 2rem;
+		gap: 0.7rem;
+		margin-top: 1.7rem;
 	}
 
 	.event-meta div {
 		display: grid;
-		gap: 0.18rem;
-		min-width: 112px;
-		border-radius: 20px;
-		padding: 0.8rem 0.9rem;
-		background: rgba(255, 255, 255, 0.72);
+		gap: 0.15rem;
+		min-width: 116px;
+		border-radius: 18px;
+		padding: 0.78rem 0.9rem;
+		background: rgba(255, 255, 255, 0.7);
 	}
 
 	.event-meta span,
-	.reservation-card p,
-	.reservation-card small {
-		color: #6f6255;
-		font-weight: 750;
+	.rsvp-card label,
+	.card-top span,
+	.reservation-count span {
+		color: #71665a;
+		font-size: 0.85rem;
+		font-weight: 760;
 	}
 
 	.event-meta strong {
-		font-size: 1.15rem;
+		font-size: 1.04rem;
 	}
 
-	.reservation-card {
+	.rsvp-card {
 		display: grid;
-		grid-template-rows: 220px auto auto auto auto;
-		gap: 0.8rem;
-		padding: 1rem;
+		gap: 0.9rem;
+		padding: 1.2rem;
 	}
 
-	.event-art {
-		position: relative;
-		overflow: hidden;
-		border-radius: 28px;
-		background: #171717;
+	.card-top {
+		justify-content: space-between;
+		gap: 1rem;
 	}
 
-	.event-art span {
-		position: absolute;
+	.card-top .eyebrow {
+		margin: 0;
+	}
+
+	.card-top span {
 		border-radius: 999px;
+		padding: 0.45rem 0.7rem;
+		background: #fff1df;
 	}
 
-	.event-art span:nth-child(1) {
-		width: 138px;
-		height: 138px;
-		top: 42px;
-		left: 116px;
-		background: #f6821f;
+	.rsvp-card label {
+		display: grid;
+		gap: 0.35rem;
 	}
 
-	.event-art span:nth-child(2) {
-		width: 94px;
-		height: 94px;
-		top: 66px;
-		left: 62px;
-		background: #fbbf24;
+	.rsvp-card input {
+		width: 100%;
+		border: 1px solid #eadfce;
+		border-radius: 16px;
+		padding: 0.85rem 0.9rem;
+		color: #171717;
+		background: #fffaf4;
+		font: inherit;
+		font-weight: 700;
 	}
 
-	.event-art span:nth-child(3) {
-		width: 96px;
-		height: 96px;
-		top: 70px;
-		right: 58px;
-		background: #fff;
+	.reservation-count {
+		display: flex;
+		align-items: end;
+		justify-content: space-between;
+		gap: 1rem;
+		border-radius: 22px;
+		padding: 1rem;
+		background: #fff6e8;
 	}
 
-	.reservation-card strong {
-		font-size: 6rem;
+	.reservation-count strong {
+		font-size: 4.8rem;
+		font-weight: 850;
 		line-height: 0.85;
-		letter-spacing: -0.09em;
+		letter-spacing: -0.08em;
 	}
 
 	.meter {
 		overflow: hidden;
-		height: 12px;
+		height: 10px;
 		border-radius: 999px;
 		background: #f6ead9;
 	}
@@ -340,11 +368,11 @@ const highlights = ["Astro deploy walkthrough", "Live Q&A", "Preview-only guest 
 		background: #f6821f;
 	}
 
-	.reservation-card button {
+	.rsvp-card button {
 		width: 100%;
 		border: 0;
 		border-radius: 999px;
-		padding: 0.95rem 1rem;
+		padding: 0.9rem 1rem;
 		color: #171717;
 		background: #fbbf24;
 		font: inherit;
@@ -353,54 +381,71 @@ const highlights = ["Astro deploy walkthrough", "Live Q&A", "Preview-only guest 
 	}
 
 	.details {
-		justify-content: space-between;
-		gap: 2rem;
 		margin-top: 1rem;
-		padding: 1.5rem;
+		padding: 1.35rem;
 	}
 
-	.details h2 {
-		max-width: 650px;
-		font-size: clamp(1.9rem, 3.4vw, 3.35rem);
-		line-height: 0.98;
-		letter-spacing: -0.07em;
+	.section-heading {
+		display: flex;
+		align-items: end;
+		justify-content: space-between;
+		gap: 1.5rem;
+		margin-bottom: 1rem;
 	}
 
-	.details ul {
-		display: grid;
-		gap: 0.7rem;
-		min-width: 310px;
-		margin: 0;
-		padding: 0;
-		list-style: none;
+	.section-heading h2 {
+		max-width: 520px;
+		font-size: clamp(1.8rem, 3vw, 2.75rem);
+		font-weight: 850;
+		line-height: 1;
+		letter-spacing: -0.06em;
 	}
 
-	.details li {
-		gap: 0.55rem;
-		border-radius: 999px;
-		padding: 0.8rem 0.95rem;
-		background: #f8efe4;
-		font-weight: 800;
+	.detail-grid {
+		gap: 0.85rem;
 	}
 
-	.details li span {
-		width: 0.6rem;
-		height: 0.6rem;
+	.detail-grid article {
+		flex: 1;
+		min-height: 132px;
+		border-radius: 22px;
+		padding: 1rem;
+		background: #fff8ee;
+	}
+
+	.detail-grid article > span {
+		display: block;
+		width: 0.62rem;
+		height: 0.62rem;
+		margin-bottom: 1rem;
 		border-radius: 999px;
 		background: #22c55e;
+	}
+
+	.detail-grid h3 {
+		margin-bottom: 0.35rem;
+		font-size: 1rem;
+	}
+
+	.detail-grid p {
+		color: #71665a;
+		font-size: 0.94rem;
+		line-height: 1.45;
 	}
 
 	@media (max-width: 880px) {
 		.site-header,
 		.hero,
-		.details,
-		.event-meta {
+		.section-heading,
+		.event-meta,
+		.detail-grid {
 			grid-template-columns: 1fr;
 		}
 
 		.site-header,
-		.details,
-		.event-meta {
+		.section-heading,
+		.event-meta,
+		.detail-grid {
 			align-items: flex-start;
 			border-radius: 26px;
 			flex-direction: column;
