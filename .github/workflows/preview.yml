@@ -137,8 +137,8 @@ jobs:
 
           probe health /api/health
           probe astro /api/astro/feed
-          probe do_read /api/staging/cart
-          probe do_write /api/staging/cart/increment
+          probe do_read /api/staging/counter
+          probe do_write /api/staging/counter/increment
           probe cache /api/cache/warm
           probe trace /api/observability/trace
           probe burst /api/observability/burst

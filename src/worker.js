@@ -9,7 +9,7 @@ export class PreviewSession {
     const requestId = crypto.randomUUID();
     const debugId = request.headers.get("x-debug-id") || url.searchParams.get("debugId") || requestId;
     const previewName = previewFromDebugId(debugId);
-    const seeded = await seedCart(this.state.storage, previewName);
+    const seeded = await seedCounter(this.state.storage, previewName);
     let count = (await this.state.storage.get("counter")) ?? seeded.counter;
 
     if (url.pathname.endsWith("/increment")) {
@@ -18,16 +18,15 @@ export class PreviewSession {
     }
 
     const payload = {
-      event: url.pathname.endsWith("/increment") ? "do_cart_counter_incremented" : "do_cart_snapshot_read",
+      event: url.pathname.endsWith("/increment") ? "do_counter_incremented" : "do_counter_read",
       requestId,
       debugId,
       previewName,
       worker: this.env.WORKER_LABEL ?? "my-worker",
       durableObject: "PreviewSession",
-      cartId: seeded.cartId,
+      counterId: seeded.counterId,
       counter: count,
-      seededCarts: seeded.seededCarts,
-      products: seeded.products.length,
+      seededValue: seeded.counter,
     };
     console.log(payload);
 
@@ -37,11 +36,10 @@ export class PreviewSession {
       debugId,
       previewName,
       durableObject: "PreviewSession",
-      cartId: seeded.cartId,
+      counterId: seeded.counterId,
       counter: count,
-      seededCarts: seeded.seededCarts,
+      seededValue: seeded.counter,
       region: seeded.region,
-      products: seeded.products,
       lastEvent: payload.event,
     });
   }
@@ -53,14 +51,14 @@ export default {
     const requestId = crypto.randomUUID();
     const debugId = request.headers.get("x-debug-id") || url.searchParams.get("debugId") || requestId;
 
-    if (url.pathname.startsWith("/api/staging/cart")) {
+    if (url.pathname.startsWith("/api/staging/counter")) {
       const previewName = previewFromDebugId(debugId);
-      const id = env.SESSION_DO.idFromName(`astro-cart:${previewName}`);
+      const id = env.SESSION_DO.idFromName(`astro-counter:${previewName}`);
       const stub = env.SESSION_DO.get(id);
       console.log({
         ...baseEvent("do_request_forwarded", request, env, requestId, debugId),
         durableObject: "PreviewSession",
-        objectName: `astro-cart:${previewName}`,
+        objectName: `astro-counter:${previewName}`,
       });
       return stub.fetch(request);
     }
@@ -142,7 +140,7 @@ export default {
   },
 };
 
-async function seedCart(storage, previewName) {
+async function seedCounter(storage, previewName) {
   const existing = await storage.get("seed");
   if (existing) {
     return existing;
@@ -150,15 +148,9 @@ async function seedCart(storage, previewName) {
 
   const seed = {
     previewName,
-    cartId: `cart_${previewName.replace(/[^a-z0-9]/gi, "_").toLowerCase()}_astro`,
+    counterId: `counter_${previewName.replace(/[^a-z0-9]/gi, "_").toLowerCase()}_astro`,
     counter: 42,
-    seededCarts: 87,
     region: "WNAM",
-    products: [
-      { sku: "ASTRO-HOODIE", name: "Astro hoodie", quantity: 1 },
-      { sku: "DO-MUG", name: "Durable Object mug", quantity: 2 },
-      { sku: "EDGE-STICKER", name: "Workers sticker pack", quantity: 4 },
-    ],
   };
   await storage.put("seed", seed);
   await storage.put("counter", seed.counter);

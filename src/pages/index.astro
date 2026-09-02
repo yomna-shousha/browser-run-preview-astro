@@ -1,27 +1,5 @@
 ---
-const products = [
-	{
-		sku: "ASTRO-HOODIE",
-		name: "Astro launch hoodie",
-		price: "$64",
-		accent: "#f6821f",
-		description: "Soft fleece, preview-only colorway.",
-	},
-	{
-		sku: "DO-MUG",
-		name: "Durable Object mug",
-		price: "$18",
-		accent: "#fbbf24",
-		description: "Keeps coffee and cart state warm.",
-	},
-	{
-		sku: "EDGE-STICKER",
-		name: "Workers sticker pack",
-		price: "$9",
-		accent: "#22c55e",
-		description: "Tiny logos for laptops and runbooks.",
-	},
-];
+const signals = ["Edge route healthy", "Astro page loaded", "Counter saved"];
 ---
 
 <html lang="en">
@@ -31,77 +9,51 @@ const products = [
 		<link rel="icon" href="/favicon.ico" />
 		<meta name="viewport" content="width=device-width" />
 		<meta name="generator" content={Astro.generator} />
-		<title>Astro Market</title>
+		<title>Astro Counter</title>
 	</head>
 	<body>
 		<main>
 			<header class="site-header">
-				<a class="brand" href="/" aria-label="Astro Market home">
+				<a class="brand" href="/" aria-label="Astro Counter home">
 					<span>cf</span>
-					Astro Market
+					Astro Counter
 				</a>
 				<nav aria-label="Main navigation">
-					<a href="#shop">Shop</a>
-					<a href="#cart">Cart</a>
-					<a href="#shipping">Shipping</a>
+					<a href="#counter">Counter</a>
+					<a href="#how">How it works</a>
 				</nav>
-				<div class="cart-chip">Cart <strong data-counter>42</strong></div>
+				<p>Powered by Durable Objects</p>
 			</header>
 
-			<section class="hero" aria-label="Store introduction">
-				<div class="hero-copy">
-					<p class="eyebrow">Fresh from the edge</p>
-					<h1>Astro merch for a launch week shop.</h1>
+			<section class="hero" id="counter">
+				<div class="copy">
+					<p class="eyebrow">Astro on Cloudflare</p>
+					<h1>A tiny counter that survives every refresh.</h1>
 					<p>
-						A small storefront for preview testing. The cart opens with seeded staging items, then saves updates in a Durable Object behind the page.
+						This preview starts with seeded staging data, then stores each click at the edge. The page stays simple: one count, one button, and state that sticks.
 					</p>
-					<div class="hero-actions">
-						<a href="#shop">Shop the drop</a>
-						<span>Cart saved at the edge</span>
-					</div>
 				</div>
 
-				<article class="feature-card" id="cart">
-					<div class="product-orbit" aria-hidden="true">
+				<article class="counter-card" aria-live="polite">
+					<div class="counter-art" aria-hidden="true">
 						<span></span>
 						<span></span>
 						<span></span>
 					</div>
-					<div class="cart-summary">
-						<p>In your cart</p>
-						<strong data-counter>42</strong>
-						<span class="cart-label">items reserved for this preview</span>
-						<small>Saved in a Durable Object</small>
-					</div>
+					<p>Current count</p>
+					<strong data-counter>42</strong>
+					<button type="button" data-increment>Count one more</button>
+					<small>Saved for this preview session</small>
 				</article>
 			</section>
 
-			<section class="product-grid" id="shop" aria-label="Featured products">
-				{products.map((product) => (
-					<article style={`--accent: ${product.accent}`}>
-						<div class="product-art" aria-hidden="true"><span>{product.name.charAt(0)}</span></div>
-						<div>
-							<small>{product.sku}</small>
-							<h2>{product.name}</h2>
-							<p>{product.description}</p>
-						</div>
-						<footer>
-							<strong>{product.price}</strong>
-							<button type="button">Add</button>
-						</footer>
-					</article>
-				))}
-			</section>
-
-			<section class="shipping" id="shipping">
+			<section class="details" id="how">
 				<div>
-					<p class="eyebrow">Fulfilled by Workers</p>
-					<h2>Fast preview checkout, seeded data, no production cart touched.</h2>
+					<p class="eyebrow">Built for previews</p>
+					<h2>Refresh the page and the number is still there.</h2>
 				</div>
 				<ul>
-					<li><span></span> Edge route is healthy</li>
-					<li><span></span> Astro catalog loaded</li>
-					<li><span></span> Durable Object cart updated</li>
+					{signals.map((signal) => <li><span></span>{signal}</li>)}
 				</ul>
 			</section>
 		</main>
@@ -110,31 +62,34 @@ const products = [
 			const params = new URLSearchParams(window.location.search);
 			const debugId = params.get("debugId") || `browser-run-${Date.now()}`;
 			const headers = { "x-debug-id": debugId };
-			const probes = [
-				"/api/health",
-				"/api/astro/feed",
-				"/api/staging/cart",
-				"/api/staging/cart/increment",
-				"/api/cache/warm",
-				"/api/observability/trace",
-				"/api/observability/burst",
-				"/api/session/refresh",
-			];
 
-			const setText = (selector, value) => {
-				for (const element of document.querySelectorAll(selector)) {
+			const setCounter = (value) => {
+				for (const element of document.querySelectorAll("[data-counter]")) {
 					element.textContent = value;
 				}
 			};
 
-			for (const path of probes) {
-				fetch(`${path}?debugId=${encodeURIComponent(debugId)}`, { headers })
-					.then(async (response) => {
-						const body = await response.json().catch(() => ({}));
-						if (body.counter) setText("[data-counter]", body.counter);
-						if (body.cartId) setText("[data-cart-id]", body.cartId);
-					})
-					.catch(() => {});
+			const loadCounter = async (path = "/api/staging/counter") => {
+				const response = await fetch(`${path}?debugId=${encodeURIComponent(debugId)}`, { headers });
+				const body = await response.json();
+				if (body.counter) setCounter(body.counter);
+				return body;
+			};
+
+			loadCounter().catch(() => {});
+			document.querySelector("[data-increment]")?.addEventListener("click", () => {
+				loadCounter("/api/staging/counter/increment").catch(() => {});
+			});
+
+			for (const path of [
+				"/api/health",
+				"/api/astro/feed",
+				"/api/cache/warm",
+				"/api/observability/trace",
+				"/api/observability/burst",
+				"/api/session/refresh",
+			]) {
+				fetch(`${path}?debugId=${encodeURIComponent(debugId)}`, { headers }).catch(() => {});
 			}
 		</script>
 	</body>
@@ -155,15 +110,15 @@ const products = [
 		min-height: 100vh;
 		margin: 0;
 		background:
-			radial-gradient(circle at 12% 12%, rgba(246, 130, 31, 0.2), transparent 20rem),
-			radial-gradient(circle at 84% 6%, rgba(251, 191, 36, 0.2), transparent 22rem),
+			radial-gradient(circle at 14% 12%, rgba(246, 130, 31, 0.2), transparent 20rem),
+			radial-gradient(circle at 84% 10%, rgba(251, 191, 36, 0.2), transparent 22rem),
 			#fbf6ee;
 	}
 
 	main {
-		width: min(1180px, calc(100% - 2rem));
+		width: min(1120px, calc(100% - 2rem));
 		margin: 0 auto;
-		padding: 1.25rem 0 2rem;
+		padding: 1.5rem 0 2rem;
 	}
 
 	.site-header {
@@ -173,19 +128,16 @@ const products = [
 		gap: 1rem;
 		border: 1px solid rgba(109, 74, 28, 0.14);
 		border-radius: 999px;
-		padding: 0.7rem 0.8rem;
-		background: rgba(255, 255, 255, 0.74);
+		padding: 0.75rem 0.9rem;
+		background: rgba(255, 255, 255, 0.78);
 		box-shadow: 0 18px 50px rgba(80, 54, 24, 0.08);
 		backdrop-filter: blur(16px);
 	}
 
 	.brand,
 	nav,
-	.cart-chip,
-	.hero-actions,
-	.product-grid footer,
-	.shipping,
-	.shipping li {
+	.details,
+	.details li {
 		display: flex;
 		align-items: center;
 	}
@@ -211,12 +163,11 @@ const products = [
 	}
 
 	nav {
-		gap: 0.35rem;
+		gap: 0.4rem;
 	}
 
 	nav a,
-	.cart-chip,
-	.hero-actions span {
+	.site-header p {
 		border-radius: 999px;
 		padding: 0.65rem 0.9rem;
 		color: #62574b;
@@ -226,44 +177,46 @@ const products = [
 	}
 
 	nav a:hover,
-	.cart-chip {
+	.site-header p {
 		color: #171717;
 		background: #fff1df;
 	}
 
-	.cart-chip {
-		gap: 0.25rem;
+	.site-header p,
+	h1,
+	h2,
+	.copy p {
+		margin: 0;
 	}
 
 	.hero {
 		display: grid;
-		grid-template-columns: minmax(0, 1fr) 340px;
+		grid-template-columns: minmax(0, 1fr) 370px;
 		gap: 1rem;
-		align-items: stretch;
 		margin-top: 1rem;
 	}
 
-	.hero-copy,
-	.feature-card,
-	.product-grid article,
-	.shipping {
+	.copy,
+	.counter-card,
+	.details {
 		border: 1px solid rgba(109, 74, 28, 0.14);
 		border-radius: 34px;
-		background: rgba(255, 255, 255, 0.76);
+		background: rgba(255, 255, 255, 0.78);
 		box-shadow: 0 24px 80px rgba(80, 54, 24, 0.1);
 	}
 
-	.hero-copy {
-		min-height: 390px;
-		padding: clamp(2rem, 4vw, 3rem);
+	.copy {
+		display: grid;
+		align-content: center;
+		min-height: 510px;
+		padding: clamp(2rem, 5vw, 4rem);
 		background:
-			radial-gradient(circle at 86% 18%, rgba(246, 130, 31, 0.22), transparent 18rem),
+			radial-gradient(circle at 88% 20%, rgba(246, 130, 31, 0.24), transparent 18rem),
 			linear-gradient(135deg, #ffffff, #fff4e4);
-		color: #171717;
 	}
 
 	.eyebrow {
-		margin: 0 0 1rem;
+		margin-bottom: 1rem;
 		color: #c36b00;
 		font-size: 0.78rem;
 		font-weight: 900;
@@ -271,243 +224,141 @@ const products = [
 		text-transform: uppercase;
 	}
 
-	h1,
-	h2,
-	p {
-		margin-top: 0;
-	}
-
 	h1 {
-		max-width: 650px;
-		margin-bottom: 1rem;
-		font-size: clamp(3rem, 5.5vw, 5.2rem);
-		line-height: 0.96;
-		letter-spacing: -0.07em;
+		max-width: 720px;
+		font-size: clamp(3.6rem, 7vw, 6.6rem);
+		line-height: 0.94;
+		letter-spacing: -0.08em;
 	}
 
-	h2 {
-		margin-bottom: 0.45rem;
-		font-size: 1.32rem;
-		letter-spacing: -0.04em;
-	}
-
-	.hero-copy p {
-		max-width: 650px;
-		margin-bottom: 0;
+	.copy p:not(.eyebrow) {
+		max-width: 620px;
+		margin-top: 1.25rem;
 		color: #6f6255;
 		font-size: 1.08rem;
 		line-height: 1.7;
 	}
 
-	.hero-actions {
-		gap: 0.7rem;
-		margin-top: 2rem;
-	}
-
-	.hero-actions a,
-	.product-grid button {
-		border: 0;
-		border-radius: 999px;
-		padding: 0.8rem 1rem;
-		color: #171717;
-		background: #fbbf24;
-		font: inherit;
-		font-weight: 850;
-		text-decoration: none;
-	}
-
-	.hero-actions span {
-		color: #5e3a08;
-		background: rgba(246, 130, 31, 0.12);
-	}
-
-	.feature-card {
+	.counter-card {
 		display: grid;
-		grid-template-rows: 1fr auto;
-		gap: 1rem;
+		grid-template-rows: 230px auto auto auto auto;
+		gap: 0.8rem;
 		padding: 1rem;
-		background: #fff;
 	}
 
-	.product-orbit {
+	.counter-art {
 		position: relative;
 		overflow: hidden;
-		min-height: 220px;
 		border-radius: 28px;
 		background: #171717;
 	}
 
-	.product-orbit span {
+	.counter-art span {
 		position: absolute;
 		border-radius: 999px;
 	}
 
-	.product-orbit span:nth-child(1) {
-		width: 130px;
-		height: 130px;
-		top: 3rem;
-		left: 50%;
-		transform: translateX(-50%);
+	.counter-art span:nth-child(1) {
+		width: 135px;
+		height: 135px;
+		top: 42px;
+		left: 116px;
 		background: #f6821f;
 	}
 
-	.product-orbit span:nth-child(2) {
-		width: 86px;
-		height: 86px;
-		top: 4.35rem;
-		left: 3.2rem;
+	.counter-art span:nth-child(2) {
+		width: 94px;
+		height: 94px;
+		top: 66px;
+		left: 62px;
 		background: #fbbf24;
 	}
 
-	.product-orbit span:nth-child(3) {
+	.counter-art span:nth-child(3) {
 		width: 96px;
 		height: 96px;
-		top: 4.8rem;
-		right: 3.1rem;
-		background: #ffffff;
+		top: 70px;
+		right: 58px;
+		background: #fff;
 	}
 
-	.cart-summary {
-		border-radius: 24px;
-		padding: 1rem;
-		background: #fff6e8;
-	}
-
-	.feature-card p {
-		margin-bottom: 0.15rem;
+	.counter-card p {
+		margin: 0;
 		color: #6f6255;
 		font-weight: 800;
 	}
 
-	.feature-card strong {
-		font-size: 5rem;
-		line-height: 0.9;
-		letter-spacing: -0.08em;
+	.counter-card strong {
+		font-size: 6rem;
+		line-height: 0.85;
+		letter-spacing: -0.09em;
 	}
 
-	.cart-label,
-	.feature-card small {
-		display: block;
+	.counter-card button {
+		width: 100%;
+		border: 0;
+		border-radius: 999px;
+		padding: 0.95rem 1rem;
+		color: #171717;
+		background: #fbbf24;
+		font: inherit;
+		font-weight: 850;
+		cursor: pointer;
+	}
+
+	.counter-card small {
 		color: #6f6255;
 		font-weight: 750;
+		text-align: center;
 	}
 
-	.feature-card small {
-		margin-top: 0.8rem;
-		font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-		font-size: 0.78rem;
-	}
-
-	.product-grid {
-		display: grid;
-		grid-template-columns: repeat(3, 1fr);
-		gap: 1rem;
-		margin-top: 1rem;
-	}
-
-	.product-grid article {
-		display: grid;
-		gap: 1rem;
-		padding: 1rem;
-	}
-
-	.product-art {
-		display: grid;
-		min-height: 190px;
-		place-items: center;
-		border-radius: 26px;
-		background:
-			radial-gradient(circle at 70% 30%, rgba(255, 255, 255, 0.82), transparent 4.5rem),
-			linear-gradient(135deg, var(--accent), #171717);
-	}
-
-	.product-art span {
-		display: grid;
-		width: 86px;
-		height: 86px;
-		place-items: center;
-		border-radius: 28px;
-		color: #171717;
-		background: rgba(255, 255, 255, 0.88);
-		font-size: 3rem;
-		font-weight: 900;
-	}
-
-	.product-grid small {
-		color: #8a5a19;
-		font-size: 0.74rem;
-		font-weight: 850;
-		letter-spacing: 0.12em;
-	}
-
-	.product-grid p {
-		margin-bottom: 0;
-		color: #6f6255;
-		line-height: 1.5;
-	}
-
-	.product-grid footer {
-		justify-content: space-between;
-		gap: 1rem;
-	}
-
-	.product-grid footer strong {
-		font-size: 1.35rem;
-	}
-
-	.product-grid button {
-		padding: 0.68rem 1rem;
-		background: #fff1df;
-	}
-
-	.shipping {
+	.details {
 		justify-content: space-between;
 		gap: 2rem;
 		margin-top: 1rem;
 		padding: 1.5rem;
 	}
 
-	.shipping h2 {
-		max-width: 560px;
-		margin-bottom: 0;
-		font-size: clamp(1.8rem, 3vw, 2.8rem);
-		line-height: 1;
+	.details h2 {
+		max-width: 600px;
+		font-size: clamp(2rem, 3.7vw, 3.7rem);
+		line-height: 0.98;
+		letter-spacing: -0.07em;
 	}
 
-	.shipping ul {
+	.details ul {
 		display: grid;
-		gap: 0.65rem;
+		gap: 0.7rem;
 		min-width: 310px;
 		margin: 0;
 		padding: 0;
 		list-style: none;
 	}
 
-	.shipping li {
+	.details li {
 		gap: 0.55rem;
 		border-radius: 999px;
-		padding: 0.75rem 0.9rem;
+		padding: 0.8rem 0.95rem;
 		background: #f8efe4;
 		font-weight: 800;
 	}
 
-	.shipping li span {
+	.details li span {
 		width: 0.6rem;
 		height: 0.6rem;
 		border-radius: 999px;
 		background: #22c55e;
 	}
 
-	@media (max-width: 920px) {
+	@media (max-width: 880px) {
 		.site-header,
 		.hero,
-		.product-grid,
-		.shipping {
+		.details {
 			grid-template-columns: 1fr;
 		}
 
 		.site-header,
-		.shipping {
+		.details {
 			align-items: flex-start;
 			border-radius: 26px;
 			flex-direction: column;
@@ -515,10 +366,6 @@ const products = [
 
 		nav {
 			flex-wrap: wrap;
-		}
-
-		.feature-card {
-			min-height: 360px;
 		}
 	}
 </style>
