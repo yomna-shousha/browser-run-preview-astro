@@ -1,13 +1,13 @@
-# Browser Run Preview Astro
+# My Worker Preview Astro
 
-Astro demo for Cloudflare Workers Previews. Pull requests deploy an isolated Worker Preview, call Cloudflare Browser Run to capture a screenshot, and update a sticky PR comment with both the Preview URL and screenshot.
+Astro demo for Cloudflare Workers Previews using a Worker named `my-worker`. Pull requests deploy an isolated Preview, call Cloudflare Browser Run to capture a screenshot, send WOBS-friendly probe traffic, and update a sticky PR comment with the Preview URL, deployment link, and screenshot.
 
 ## Local Commands
 
 - `npm run dev` starts Astro locally.
 - `npm run build` builds static assets into `dist/`.
 - `npm run deploy` builds and deploys production with `wrangler deploy`.
-- `npm run cf:preview` builds and deploys a Worker Preview with `wrangler preview --json`.
+- `npm run cf:preview` builds and deploys a Preview with `wrangler preview --json`.
 
 ## GitHub Secrets
 
@@ -22,7 +22,8 @@ Set these repository secrets before opening PRs:
 
 1. `wrangler preview --name pr-<number>` deploys the branch to an isolated Preview.
 2. Browser Run calls `/browser-rendering/screenshot` against the Preview URL.
-3. The workflow pushes the screenshot to a per-PR `preview-artifacts-pr-<number>` branch.
-4. `actions/github-script` creates or updates a sticky PR comment with the Preview URL and embedded screenshot.
+3. The Preview page and workflow send health, Astro data, Durable Object, cache, trace, burst, and session-refresh requests with one debug ID.
+4. The workflow pushes the screenshot to a per-PR `preview-artifacts-pr-<number>` branch.
+5. `actions/github-script` creates or updates a sticky PR comment with the Preview URL, deployment link, probe results, WOBS path, and embedded screenshot.
 
-When the PR closes, the workflow deletes the Worker Preview and screenshot artifact branch.
+When the PR closes, the workflow deletes the Preview and screenshot artifact branch.

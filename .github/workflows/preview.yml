@@ -1,4 +1,4 @@
-name: Worker Preview
+name: Preview
 
 on:
   pull_request:
@@ -16,7 +16,7 @@ permissions:
   pull-requests: write
 
 env:
-  WORKER_NAME: browser-run-preview-astro
+  WORKER_NAME: my-worker
 
 jobs:
   preview:
@@ -34,7 +34,7 @@ jobs:
 
       - run: npm run build
 
-      - name: Deploy Worker Preview
+      - name: Deploy Preview
         id: deploy
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
@@ -47,14 +47,20 @@ jobs:
           PREVIEW_JSON=$(printf '%s' "$OUTPUT" | node -e 'const fs = require("node:fs"); const text = fs.readFileSync(0, "utf8"); const start = text.indexOf("{"); if (start < 0) process.exit(1); process.stdout.write(text.slice(start));')
           PREVIEW_URL=$(printf '%s' "$PREVIEW_JSON" | jq -r '.preview.urls[0] // empty')
           DEPLOYMENT_ID=$(printf '%s' "$PREVIEW_JSON" | jq -r '.deployment.id // empty')
+          DEPLOYMENT_URL=$(printf '%s' "$PREVIEW_JSON" | jq -r '.deployment.urls[0] // empty')
 
           if [ -z "$PREVIEW_URL" ]; then
             echo "::error::Could not find a preview URL in wrangler output"
             exit 1
           fi
 
+          if [ -z "$DEPLOYMENT_URL" ]; then
+            DEPLOYMENT_URL="$PREVIEW_URL"
+          fi
+
           echo "preview_url=$PREVIEW_URL" >> "$GITHUB_OUTPUT"
           echo "deployment_id=$DEPLOYMENT_ID" >> "$GITHUB_OUTPUT"
+          echo "deployment_url=$DEPLOYMENT_URL" >> "$GITHUB_OUTPUT"
 
       - name: Capture screenshot with Browser Run
         id: screenshot
@@ -111,29 +117,32 @@ jobs:
           set -euo pipefail
           mkdir -p preview-output
 
-          HEALTH_STATUS=$(curl -sS \
-            -H "CF-Access-Client-Id: ${CF_ACCESS_CLIENT_ID}" \
-            -H "CF-Access-Client-Secret: ${CF_ACCESS_CLIENT_SECRET}" \
-            -H "x-debug-id: ${DEBUG_ID}" \
-            "${PREVIEW_URL}/api/health?debugId=${DEBUG_ID}" \
-            --output preview-output/health.json \
-            --write-out "%{http_code}")
+          probe() {
+            local name="$1"
+            local path="$2"
+            local file="preview-output/${name}.json"
+            local status
+            status=$(curl -sS \
+              -H "CF-Access-Client-Id: ${CF_ACCESS_CLIENT_ID}" \
+              -H "CF-Access-Client-Secret: ${CF_ACCESS_CLIENT_SECRET}" \
+              -H "x-debug-id: ${DEBUG_ID}" \
+              "${PREVIEW_URL}${path}?debugId=${DEBUG_ID}" \
+              --output "$file" \
+              --write-out "%{http_code}" || true)
+            local request_id
+            request_id=$(jq -r '.requestId // "unknown"' "$file" 2>/dev/null || printf 'unknown')
+            echo "${name}_status=$status" >> "$GITHUB_OUTPUT"
+            echo "${name}_request_id=$request_id" >> "$GITHUB_OUTPUT"
+          }
 
-          SESSION_STATUS=$(curl -sS \
-            -H "CF-Access-Client-Id: ${CF_ACCESS_CLIENT_ID}" \
-            -H "CF-Access-Client-Secret: ${CF_ACCESS_CLIENT_SECRET}" \
-            -H "x-debug-id: ${DEBUG_ID}" \
-            "${PREVIEW_URL}/api/session/refresh?debugId=${DEBUG_ID}" \
-            --output preview-output/session-refresh.json \
-            --write-out "%{http_code}" || true)
-
-          HEALTH_REQUEST_ID=$(jq -r '.requestId // "unknown"' preview-output/health.json)
-          SESSION_REQUEST_ID=$(jq -r '.requestId // "unknown"' preview-output/session-refresh.json)
-
-          echo "health_status=$HEALTH_STATUS" >> "$GITHUB_OUTPUT"
-          echo "session_status=$SESSION_STATUS" >> "$GITHUB_OUTPUT"
-          echo "health_request_id=$HEALTH_REQUEST_ID" >> "$GITHUB_OUTPUT"
-          echo "session_request_id=$SESSION_REQUEST_ID" >> "$GITHUB_OUTPUT"
+          probe health /api/health
+          probe astro /api/astro/feed
+          probe do_read /api/staging/cart
+          probe do_write /api/staging/cart/increment
+          probe cache /api/cache/warm
+          probe trace /api/observability/trace
+          probe burst /api/observability/burst
+          probe session /api/session/refresh
 
       - name: Publish screenshot for PR comment
         id: publish-screenshot
@@ -171,52 +180,71 @@ jobs:
         env:
           PREVIEW_URL: ${{ steps.deploy.outputs.preview_url }}
           DEPLOYMENT_ID: ${{ steps.deploy.outputs.deployment_id }}
+          DEPLOYMENT_URL: ${{ steps.deploy.outputs.deployment_url }}
           SCREENSHOT_URL: ${{ steps.publish-screenshot.outputs.screenshot_url }}
           DEBUG_ID: ${{ steps.screenshot.outputs.debug_id }}
           HEALTH_STATUS: ${{ steps.wobs-probe.outputs.health_status }}
+          ASTRO_STATUS: ${{ steps.wobs-probe.outputs.astro_status }}
           SESSION_STATUS: ${{ steps.wobs-probe.outputs.session_status }}
+          DO_READ_STATUS: ${{ steps.wobs-probe.outputs.do_read_status }}
+          DO_WRITE_STATUS: ${{ steps.wobs-probe.outputs.do_write_status }}
+          CACHE_STATUS: ${{ steps.wobs-probe.outputs.cache_status }}
+          TRACE_STATUS: ${{ steps.wobs-probe.outputs.trace_status }}
+          BURST_STATUS: ${{ steps.wobs-probe.outputs.burst_status }}
           HEALTH_REQUEST_ID: ${{ steps.wobs-probe.outputs.health_request_id }}
+          ASTRO_REQUEST_ID: ${{ steps.wobs-probe.outputs.astro_request_id }}
           SESSION_REQUEST_ID: ${{ steps.wobs-probe.outputs.session_request_id }}
+          DO_READ_REQUEST_ID: ${{ steps.wobs-probe.outputs.do_read_request_id }}
+          DO_WRITE_REQUEST_ID: ${{ steps.wobs-probe.outputs.do_write_request_id }}
+          CACHE_REQUEST_ID: ${{ steps.wobs-probe.outputs.cache_request_id }}
+          TRACE_REQUEST_ID: ${{ steps.wobs-probe.outputs.trace_request_id }}
+          BURST_REQUEST_ID: ${{ steps.wobs-probe.outputs.burst_request_id }}
         with:
           script: |
-            const marker = '<!-- worker-preview:browser-run-preview-astro -->';
+            const marker = '<!-- worker-preview:my-worker -->';
             const previewUrl = process.env.PREVIEW_URL;
+            const deploymentUrl = process.env.DEPLOYMENT_URL || previewUrl;
             const screenshotUrl = process.env.SCREENSHOT_URL;
             const deploymentId = process.env.DEPLOYMENT_ID || 'unknown';
-            const branch = context.payload.pull_request.head.ref;
-            const sha = context.payload.pull_request.head.sha.slice(0, 7);
             const previewName = `pr-${context.issue.number}`;
             const wobsPath = `/workers/services/view/${process.env.WORKER_NAME}/production/previews/${previewName}/observability/events`;
-            const sessionStatus = Number(process.env.SESSION_STATUS || 0);
-            const runtimeStatus = sessionStatus >= 500 ? 'Known runtime issue detected' : 'Runtime probe clean';
-            const runtimeDetails = sessionStatus >= 500
+            const probes = [
+              ['Health', process.env.HEALTH_STATUS, process.env.HEALTH_REQUEST_ID],
+              ['Astro feed', process.env.ASTRO_STATUS, process.env.ASTRO_REQUEST_ID],
+              ['Session refresh', process.env.SESSION_STATUS, process.env.SESSION_REQUEST_ID],
+              ['DO read', process.env.DO_READ_STATUS, process.env.DO_READ_REQUEST_ID],
+              ['DO write', process.env.DO_WRITE_STATUS, process.env.DO_WRITE_REQUEST_ID],
+              ['Cache warm', process.env.CACHE_STATUS, process.env.CACHE_REQUEST_ID],
+              ['Trace', process.env.TRACE_STATUS, process.env.TRACE_REQUEST_ID],
+              ['Burst', process.env.BURST_STATUS, process.env.BURST_REQUEST_ID],
+            ];
+            const failedProbes = probes.filter(([, status]) => {
+              const code = Number(status || 0);
+              return code < 200 || code >= 400;
+            });
+            const runtimeStatus = failedProbes.length > 0 ? 'Runtime probe issue detected' : 'Runtime probes clean';
+            const probeRows = probes.map(([name, status, requestId]) => `| ${name} | \`${status || 'unknown'}\` / \`${requestId || 'unknown'}\` |`).join('\n');
+            const runtimeDetails = failedProbes.length > 0
               ? `### Detected issue
 
-            The Preview rendered, but the Worker runtime probe failed during the same validation flow.
+            The Preview rendered, but one or more runtime probes failed during the same validation flow.
 
-            | Issue | Evidence |
+            | Probe | Evidence |
             | --- | --- |
-            | Failed endpoint | \`GET /api/session/refresh\` |
-            | Observed status | \`${process.env.SESSION_STATUS}\` |
-            | Expected WOBS event | \`session_refresh_failed\` |
-            | Debug correlation | search WOBS for \`${process.env.DEBUG_ID}\` |
-            | Request correlation | open/search request \`${process.env.SESSION_REQUEST_ID}\` |
+            ${failedProbes.map(([name, status, requestId]) => `| ${name} | \`${status || 'unknown'}\` / \`${requestId || 'unknown'}\` |`).join('\n')}
 
-            This is the demo gap: Browser Run proves what rendered, while WOBS exposes the hidden Worker failure behind that Preview.`
+            Search WOBS for \`${process.env.DEBUG_ID}\` to see the matching Worker logs and traces.`
               : `### Fix verification
 
-            The previously failing runtime probe is now healthy.
+            The preview rendered and every runtime probe returned a healthy status.
 
             | Check | Evidence |
             | --- | --- |
-            | Fixed endpoint | \`GET /api/session/refresh\` |
-            | Observed status | \`${process.env.SESSION_STATUS}\` |
-            | Expected WOBS event | \`session_refresh_succeeded\` |
-            | Debug correlation | search WOBS for \`${process.env.DEBUG_ID}\` |
-            | Request correlation | open/search request \`${process.env.SESSION_REQUEST_ID}\` |`;
+            ${probeRows}
+            | Debug correlation | search WOBS for \`${process.env.DEBUG_ID}\` |`;
 
             const body = `${marker}
-            ## Worker Preview
+            ## Preview
 
             [Open the latest Preview](${previewUrl})
 
@@ -225,22 +253,25 @@ jobs:
             | Field | Value |
             | --- | --- |
             | Preview | \`pr-${context.issue.number}\` |
-            | Branch | \`${branch}\` |
-            | Commit | \`${sha}\` |
-            | Deployment | \`${deploymentId}\` |
+            | Preview URL | ${previewUrl} |
+            | Deployment | [\`${deploymentId}\`](${deploymentUrl}) |
             | Worker | \`${process.env.WORKER_NAME}\` |
             | Debug ID | \`${process.env.DEBUG_ID}\` |
             | Health probe | \`${process.env.HEALTH_STATUS}\` / \`${process.env.HEALTH_REQUEST_ID}\` |
+            | Astro feed probe | \`${process.env.ASTRO_STATUS}\` / \`${process.env.ASTRO_REQUEST_ID}\` |
             | Session refresh probe | \`${process.env.SESSION_STATUS}\` / \`${process.env.SESSION_REQUEST_ID}\` |
+            | DO read probe | \`${process.env.DO_READ_STATUS}\` / \`${process.env.DO_READ_REQUEST_ID}\` |
+            | DO write probe | \`${process.env.DO_WRITE_STATUS}\` / \`${process.env.DO_WRITE_REQUEST_ID}\` |
+            | Cache warm probe | \`${process.env.CACHE_STATUS}\` / \`${process.env.CACHE_REQUEST_ID}\` |
+            | Trace probe | \`${process.env.TRACE_STATUS}\` / \`${process.env.TRACE_REQUEST_ID}\` |
+            | Burst probe | \`${process.env.BURST_STATUS}\` / \`${process.env.BURST_REQUEST_ID}\` |
             | WOBS path | \`${wobsPath}\` |
 
             ### Runtime signal
 
-            ${runtimeStatus}. Browser Run captured the page, then the workflow generated Preview traffic with the same debug ID so WOBS can correlate the screenshot to Worker logs/traces.
+            ${runtimeStatus}. Browser Run captured the page, then the workflow sent health, Astro, Durable Object, cache, trace, burst, and session-refresh requests with the same debug ID.
 
-            ${runtimeDetails}
-
-            Generated by \`wrangler preview\`, Cloudflare Browser Run, and Preview-scoped WOBS probes.`;
+            ${runtimeDetails}`;
 
             const { data: comments } = await github.rest.issues.listComments({
               owner: context.repo.owner,
@@ -279,7 +310,7 @@ jobs:
 
       - run: npm install --no-audit --no-fund
 
-      - name: Delete Worker Preview
+      - name: Delete Preview
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           PREVIEW_NAME: pr-${{ github.event.pull_request.number }}
@@ -294,10 +325,10 @@ jobs:
         uses: actions/github-script@v7
         with:
           script: |
-            const marker = '<!-- worker-preview:browser-run-preview-astro -->';
+            const marker = '<!-- worker-preview:my-worker -->';
             const status = context.payload.pull_request.merged ? 'Merged' : 'Closed';
             const body = `${marker}
-            ## Worker Preview
+            ## Preview
 
             ${status}. The Preview and screenshot artifact branch were deleted.`;
 
